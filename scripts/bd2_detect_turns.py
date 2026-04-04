@@ -33,6 +33,7 @@ DEFAULT_LOG_EVERY = 10
 FOUND_FRAMES_DIR = "found_frames"
 CACHE_ROOT = Path(".cache")
 FRAMES_DIR = CACHE_ROOT / "frames"
+OUTPUT_ROOT = Path("outputs")
 
 try:
     from rich.console import Console
@@ -562,15 +563,16 @@ def run(
         raise RuntimeError("Cache cleared. Run bd2_extract_frames.py first or pass --use-cache.")
     frames_csv_path = Path(frames_csv) if frames_csv else resolve_default_frames_csv()
     cache_dir = frames_csv_path.parent
+    frames_hash = compute_file_hash(frames_csv_path)
+    output_dir = OUTPUT_ROOT / frames_hash
     detections_path = Path(detections)
     boundaries_path = Path(boundaries)
-    if detections_path.name == str(DEFAULT_DETECTIONS) and detections_path.parent == Path(".cache"):
-        detections_path = cache_dir / DEFAULT_DETECTIONS
-    if boundaries_path.name == str(DEFAULT_BOUNDARIES) and boundaries_path.parent == Path(".cache"):
-        boundaries_path = cache_dir / DEFAULT_BOUNDARIES
-    found_frames_dir = cache_dir / FOUND_FRAMES_DIR
-    detect_meta_path = cache_dir / "detect_meta.json"
-    frames_hash = compute_file_hash(frames_csv_path)
+    if detections_path == Path(DEFAULT_DETECTIONS):
+        detections_path = output_dir / DEFAULT_DETECTIONS
+    if boundaries_path == Path(DEFAULT_BOUNDARIES):
+        boundaries_path = output_dir / DEFAULT_BOUNDARIES
+    found_frames_dir = output_dir / FOUND_FRAMES_DIR
+    detect_meta_path = output_dir / "detect_meta.json"
     cache_ready = detections_path.exists() and boundaries_path.exists() and detect_meta_path.exists()
     if cache_ready:
         try:

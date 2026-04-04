@@ -4,5 +4,6 @@
 .DS_Store
 .envrc
 inputs/*.mp4
+outputs/
 detections.jsonl
 turn_boundaries.csv
