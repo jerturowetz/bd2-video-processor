@@ -1,0 +1,162 @@
+---
+id: development_cleanup_guidelines
+description: "Remove temporary files and development artifacts that shouldn't persist in codebases before committing"
+---
+
+# Development File Cleanup Guidelines
+
+Remove temporary files and development artifacts that shouldn't persist in the codebase, especially before committing to version control.
+
+## Files to Clean Up
+
+### Temporary Files
+- `*.tmp`, `*.temp`, `temp-*`
+- `*.bak`, `*.backup`, `*.orig`
+- `.cache`, `node_modules/.cache`
+- OS-specific temporary files (`.DS_Store`, `Thumbs.db`)
+
+### Development Artifacts
+- `console.log()`, `console.debug()` statements
+- `debugger;` statements  
+- Large blocks of commented-out code
+- Test files created during development
+- Debugging print statements (`print()`, `echo`, etc.)
+
+### Build and Cache Artifacts
+- `dist/` directory before new builds (unless ignored)
+- `build/` output directories
+- `.cache/` directories
+- Compiled files that should be regenerated
+
+### Project-Specific Artifacts
+- Unused images in asset directories (`src/assets/images/uploads/`)
+- Deprecated config files (e.g., `.cursorrules`)
+- Temporary data files
+- Screenshot files from debugging
+- Generated files that should not be committed
+
+## When to Clean Up
+
+### Before Committing
+- **Always remove debug code** and temporary files
+- Review diff for unintended inclusions
+- Clean up console/debug statements
+- Remove temporary test code
+
+### After Development Sessions  
+- Clean temporary artifacts created during development
+- Remove downloaded test files or samples
+- Clear debugging output files
+
+### Before Deployment
+- Ensure no development files are included in build
+- Remove test-specific configurations
+- Clean up any hardcoded debugging values
+
+### During Code Review
+- Check for overlooked debug statements
+- Identify temporary files that slipped through
+- Remove experimental code that didn't make it to final solution
+
+### Proactive Cleanup Offers
+**After completing tasks or reaching milestones**, proactively offer to clean up temporary files:
+- Ask "Should I clean up the temporary files from this work?"
+- Be specific about what would be removed
+- **Never automatically delete files** - always ask permission
+- Provide clear file/folder names and locations
+- Explain why files are no longer needed
+
+**Example cleanup offers:**
+- "I can remove the `/temp/analysis-data/` folder and the 3 `test-output.json` files"
+- "The download cache in `/temp/` is no longer needed. Clean it up?"
+- "We have 15 test files from the processing. Keep them or remove?"
+- "This analysis created several temp folders in Downloads. Should I clean them up?"
+
+## Cleanup Commands
+
+### Quick Cleanup
+```bash
+# Remove common temp files
+find . -name "*.tmp" -delete
+find . -name "*.temp" -delete
+find . -name "temp-*" -delete
+
+# Remove backup files
+find . -name "*.bak" -delete
+find . -name "*.orig" -delete
+
+# Remove OS-specific files
+find . -name ".DS_Store" -delete
+find . -name "Thumbs.db" -delete
+```
+
+### Git-Based Cleanup
+```bash
+# See untracked files before cleaning
+git status --ignored
+
+# Clean untracked files (be careful!)
+git clean -n  # dry run first
+git clean -fd # remove untracked files and directories
+
+# Remove files from git but keep locally
+git rm --cached filename
+```
+
+### Code Pattern Cleanup
+```bash
+# Find console.log statements
+grep -r "console\.log" src/ --include="*.js" --include="*.ts"
+
+# Find debugger statements  
+grep -r "debugger" src/ --include="*.js" --include="*.ts"
+
+# Find print statements in Python
+grep -r "print(" . --include="*.py"
+```
+
+### Project-Specific Cleanup
+```bash
+# Remove dist/build before rebuild
+rm -rf dist/ build/
+
+# Clean npm/node artifacts
+npm run clean  # if available
+rm -rf node_modules/.cache/
+```
+
+## Best Practices
+
+### ✅ DO:
+- **Review diffs carefully** before committing to catch overlooked artifacts
+- **Use .gitignore** to prevent temporary files from being tracked
+- **Set up pre-commit hooks** to automatically clean common artifacts  
+- **Document cleanup commands** in project README if project-specific
+- **Use build scripts** that clean before building
+- **Remove debug code** as you finish each development session
+
+### ❌ DON'T:
+- Commit console.log or debug statements to production code
+- Leave large commented-out code blocks - remove or document why they're kept
+- Include temporary test files in commits
+- Skip reviewing the diff - easy to miss temporary files
+- Use `git clean -fd` without understanding what it will remove
+- Leave hardcoded debugging values in configuration files
+
+## Integration with Workflow
+
+### Pre-commit Checklist
+1. **Search for debug statements**: `grep -r "console\.log\|debugger\|print(" src/`
+2. **Check for temp files**: `find . -name "*.tmp" -o -name "*.temp"`
+3. **Review git status**: `git status` - look for unintended additions
+4. **Clean if needed**: Remove identified artifacts
+5. **Final review**: Check diff one more time before commit
+
+### Automated Cleanup
+Consider setting up:
+- Pre-commit hooks that run cleanup commands
+- Build scripts that clean before building
+- Linting rules that catch debug statements
+- `.gitignore` patterns for common temporary files
+
+**Remember: A clean codebase is easier to maintain, debug, and deploy. Make cleanup part of your regular development workflow.**

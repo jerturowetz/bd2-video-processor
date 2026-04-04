@@ -1,0 +1,61 @@
+---
+id: directory_organization_philosophy
+description: "Philosophy for organizing directories, configs, and avoiding tool pollution in home directory"
+---
+
+# Directory Organization Philosophy
+
+Maintain clean separation between different types of files and avoid tools that pollute the home directory with unnecessary initialization files.
+
+## ✅ DO
+
+**Directory Structure Principles**
+- Separate configuration files, data files, and applications
+- Use dedicated directories for different purposes: `~/Projects/`, `~/Unito/`, etc.
+- Keep the home directory clean of application-specific files when possible
+- Use `~/.config/` for configuration files that support XDG Base Directory specification
+
+**Project Organization**
+- Use logical directory hierarchies: `~/Projects/personal/`, `~/Unito/work-projects/`
+- Group related projects together by context (work, personal, experiments)
+- Keep project templates and standards consistent across similar projects
+- Document project structure and conventions in README files
+
+**Configuration Management**
+- Store configurations in version-controlled dotfiles
+- Use tools that support clean directory structures (chezmoi, not random dotfile dumps)
+- Separate machine-specific configs from universal configs
+- Keep backup configurations for critical tools
+
+## ❌ DON'T
+
+**Avoid Directory Pollution**
+- Don't use tools that create unnecessary files in home directory (like `warp init` in home)
+- Don't let package managers scatter config files everywhere without organization
+- Don't mix personal and work projects in the same directory structure
+- Don't create deep nested hierarchies that make navigation difficult
+
+**Anti-patterns to Avoid**
+- Don't use tools that force their directory structure on you
+- Don't accept default locations if they create clutter
+- Don't ignore where tools put their files - be intentional about organization
+- Don't let tools create initialization files in places you don't want them
+
+## Integration Points
+
+**With Dotfiles Management**
+- Use chezmoi for version-controlled config files
+- Keep dotfiles repository clean and well-organized
+- Document which configs are managed where
+
+**With Development Tools**
+- Configure tools to use appropriate directories (`~/.config/` when supported)
+- Use project-local configurations when possible
+- Avoid global installations that affect all projects unnecessarily
+
+**With Package Managers**
+- Use virtual environments and project-local dependencies
+- Keep global installations minimal and purposeful
+- Document global dependencies and their purposes
+
+This approach maintains a clean, navigable system while supporting efficient development workflows.

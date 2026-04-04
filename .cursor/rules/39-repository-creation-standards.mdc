@@ -1,0 +1,51 @@
+---
+id: repository_creation_standards
+description: "Standardize repository creation using GitHub CLI with secure defaults"
+---
+
+# Repository Creation Standards
+
+When creating or managing repositories, use consistent tooling and secure defaults to ensure proper repository management practices.
+
+## Implementation
+
+### Repository Creation
+✅ **DO:**
+- Use GitHub CLI (`gh` command) for repository operations instead of web interfaces
+- Default to private repositories unless explicitly told otherwise
+- Use `gh repo create repo-name --private` as the standard creation command
+- Only use `--public` when specifically requested by the user
+
+❌ **DON'T:**
+- Create repositories through web interfaces when CLI is available
+- Default to public repositories without explicit user request
+- Use inconsistent tooling across repository operations
+
+### Command Standards
+
+**Repository Creation:**
+```bash
+# Default (secure)
+gh repo create project-name --private
+
+# Only when explicitly requested
+gh repo create project-name --public
+
+# With additional options
+gh repo create project-name --private --description "Project description" --clone
+```
+
+**Repository Management:**
+```bash
+# Consistent use of gh CLI for other operations
+gh repo view
+gh repo clone owner/repo-name
+gh repo fork owner/repo-name
+```
+
+## Rationale
+
+- **Security First**: Private by default reduces risk of accidental data exposure
+- **Tool Consistency**: Using GitHub CLI provides consistent, scriptable repository management
+- **Audit Trail**: CLI operations are easier to track and reproduce than web interface actions
+- **Automation Ready**: CLI-based operations integrate better with scripts and workflows

@@ -1,0 +1,243 @@
+---
+id: api_response_caching
+description: "Cache API responses to avoid redundant requests during development and testing, reducing costs and improving performance"
+---
+
+# API Response Caching
+
+Implement intelligent caching to reduce API costs and improve performance during development and testing.
+
+## Core Principle
+
+**Cache API responses during development** to avoid hitting rate limits, reduce costs, and improve development speed.
+
+## When to Use Caching
+
+### Development and Testing
+- **During development** - Avoid repeated API calls while iterating on code
+- **When testing** - Use cached responses to test data processing without API overhead
+- **For expensive APIs** - Cache responses from costly external services
+- **During debugging** - Avoid re-fetching data while debugging processing logic
+
+### Production Considerations
+- **Frequent requests** - Cache responses for data that doesn't change often
+- **Rate-limited APIs** - Prevent hitting rate limits with intelligent caching
+- **Expensive operations** - Cache results of computationally expensive API calls
+
+## Caching Strategies
+
+### File-Based Caching (Simple)
+Use for development and small-scale applications:
+
+```python
+import json
+import os
+from pathlib import Path
+from datetime import datetime, timedelta
+
+class APICache:
+    def __init__(self, cache_dir=".cache/api"):
+        self.cache_dir = Path(cache_dir)
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+
+    def get(self, key: str, max_age_hours: int = 24):
+        """Get cached response if not expired."""
+        cache_file = self.cache_dir / f"{key}.json"
+
+        if not cache_file.exists():
+            return None
+
+        with open(cache_file) as f:
+            data = json.load(f)
+
+        # Check if cache is expired
+        cached_time = datetime.fromisoformat(data['timestamp'])
+        if datetime.now() - cached_time > timedelta(hours=max_age_hours):
+            cache_file.unlink()  # Remove expired cache
+            return None
+
+        return data['response']
+
+    def set(self, key: str, response: dict):
+        """Cache API response."""
+        cache_file = self.cache_dir / f"{key}.json"
+
+        data = {
+            'timestamp': datetime.now().isoformat(),
+            'response': response
+        }
+
+        with open(cache_file, 'w') as f:
+            json.dump(data, f, indent=2)
+```
+
+### JavaScript/Node.js Implementation
+
+```javascript
+const fs = require('fs');
+const path = require('path');
+
+class APICache {
+  constructor(cacheDir = '.cache/api') {
+    this.cacheDir = cacheDir;
+    // Ensure cache directory exists
+    if (!fs.existsSync(cacheDir)) {
+      fs.mkdirSync(cacheDir, { recursive: true });
+    }
+  }
+
+  get(key, maxAgeHours = 24) {
+    const cacheFile = path.join(this.cacheDir, `${key}.json`);
+
+    if (!fs.existsSync(cacheFile)) {
+      return null;
+    }
+
+    const data = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+    const cachedTime = new Date(data.timestamp);
+    const now = new Date();
+
+    if (now - cachedTime > maxAgeHours * 60 * 60 * 1000) {
+      fs.unlinkSync(cacheFile);
+      return null;
+    }
+
+    return data.response;
+  }
+
+  set(key, response) {
+    const cacheFile = path.join(this.cacheDir, `${key}.json`);
+
+    const data = {
+      timestamp: new Date().toISOString(),
+      response: response,
+    };
+
+    fs.writeFileSync(cacheFile, JSON.stringify(data, null, 2));
+  }
+}
+```
+
+## Cache Key Strategies
+
+### URL-Based Keys
+```python
+def get_cache_key(url: str, params: dict = None) -> str:
+    """Generate cache key from URL and parameters."""
+    key = url.replace('/', '_').replace('?', '_').replace('&', '_')
+    if params:
+        param_str = '_'.join(f"{k}_{v}" for k, v in sorted(params.items()))
+        key += f"_{param_str}"
+    return key
+```
+
+### Content-Based Keys  
+```python
+import hashlib
+
+def get_content_cache_key(content: str) -> str:
+    """Generate cache key from content hash."""
+    return hashlib.md5(content.encode()).hexdigest()
+```
+
+## Cache Usage Pattern
+
+```python
+# Initialize cache
+cache = APICache()
+
+def fetch_user_data(user_id: int, use_cache: bool = True):
+    cache_key = f"user_{user_id}"
+    
+    # Try cache first
+    if use_cache:
+        cached_data = cache.get(cache_key, max_age_hours=6)
+        if cached_data:
+            print(f"Using cached data for user {user_id}")
+            return cached_data
+    
+    # Fetch from API
+    print(f"Fetching fresh data for user {user_id}")
+    response = api_client.get_user(user_id)
+    
+    # Cache the response
+    if use_cache:
+        cache.set(cache_key, response)
+    
+    return response
+```
+
+## Cache Invalidation
+
+### Time-Based Expiration
+- Set appropriate expiration times based on data freshness requirements
+- Use shorter cache times for frequently changing data
+- Use longer cache times for stable reference data
+
+### Manual Invalidation
+```python
+def invalidate_cache(pattern: str = "*"):
+    """Invalidate cache files matching pattern."""
+    cache_dir = Path(".cache/api")
+    for cache_file in cache_dir.glob(f"{pattern}.json"):
+        cache_file.unlink()
+        print(f"Invalidated cache: {cache_file.name}")
+```
+
+### Environment-Based Invalidation
+```bash
+# Clear all cache when switching environments
+rm -rf .cache/api/
+
+# Clear specific API cache
+rm -f .cache/api/notion_*.json
+```
+
+## Best Practices
+
+### ✅ DO:
+- **Use descriptive cache keys** that include relevant parameters
+- **Set appropriate expiration times** based on data freshness needs
+- **Add cache debugging** to log cache hits/misses during development
+- **Include cache status in logs** to track cache effectiveness
+- **Use different cache directories** for different environments
+- **Version your cache keys** when API response format changes
+
+### ❌ DON'T:
+- Cache sensitive data like authentication tokens or personal information
+- Use overly short cache expiration times (defeats the purpose)
+- Cache error responses (let them fail fresh each time)
+- Ignore cache directory size (implement cleanup for large caches)
+- Cache during production without considering data freshness requirements
+
+## Cache Directory Structure
+
+```
+.cache/
+├── api/
+│   ├── notion_pages_123.json
+│   ├── notion_blocks_456.json
+│   ├── hubspot_contacts.json
+│   └── user_data_789.json
+├── images/
+└── temp/
+```
+
+## Environment Integration
+
+### Development Environment
+```python
+# Enable caching in development
+USE_CACHE = os.getenv('NODE_ENV') == 'development'
+
+data = fetch_api_data(params, use_cache=USE_CACHE)
+```
+
+### .gitignore Entry
+```
+# Cache directories
+.cache/
+*.cache
+```
+
+**Remember: API caching is primarily a development tool. Always consider data freshness requirements and cache invalidation strategies for production use.**

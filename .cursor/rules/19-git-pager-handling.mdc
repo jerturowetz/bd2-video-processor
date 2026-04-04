@@ -1,0 +1,48 @@
+---
+id: git_pager_handling
+description: "Ensure git and GitHub CLI commands produce full output by disabling pagers"
+---
+
+# Git Command Pager Handling
+
+When running git commands or GitHub CLI commands that might produce paginated output, always use pager-disabling options or pipe to cat to ensure full output is captured. Many git commands (like git log, git diff, gh repo view) use pagers by default, which can cause empty or incomplete output in AI interactions.
+
+## Implementation
+
+✅ **DO:**
+- Use the `--no-pager` global flag for git commands: `git --no-pager log`
+- Pipe output to cat for other commands: `gh repo view repo-name | cat`
+- Set `uses_pager: true` in tool calls when commands might invoke a pager
+- Be proactive about pager handling for any VCS or CLI tool that might paginate
+
+❌ **DON'T:**
+- Run git commands without pager considerations: `git log` (may truncate)
+- Assume tools won't paginate output in AI environments
+- Ignore pagination settings when using CLI tools through AI interfaces
+
+## Common Commands Requiring Pager Handling
+
+**Git Commands:**
+```bash
+git --no-pager log
+git --no-pager diff
+git --no-pager show
+git --no-pager blame
+```
+
+**GitHub CLI:**
+```bash
+gh repo view repo-name | cat
+gh pr list | cat
+gh issue list | cat
+```
+
+**Other Tools:**
+```bash
+less file.txt | cat
+man command | cat
+```
+
+## Rationale
+
+Pagers are designed for interactive terminal use but can interfere with programmatic access to command output. In AI interactions, incomplete output leads to poor analysis and decision-making.

@@ -1,0 +1,132 @@
+---
+id: project_templates_standards
+description: "Standards for creating project templates and maintaining consistent development practices across projects"
+---
+
+# Project Templates & Standards
+
+Establish consistent project initialization and development standards to ensure quality and maintainability across all projects.
+
+## ✅ DO
+
+**Project Template Components**
+- Create template repositories for common project types (Python, Node.js, Astro, WordPress)
+- Include essential files in templates: README.md, .gitignore, .envrc template, LICENSE
+- Add basic CI/CD configuration appropriate for the project type
+- Include development environment setup instructions
+- Provide code quality tools configuration (linting, formatting, testing)
+
+**README.md Standards**
+- Include clear project description and purpose
+- Document installation and setup requirements
+- Provide usage examples and common commands
+- Include contribution guidelines and development setup
+- Document environment variables and configuration requirements
+
+**Code Quality Standards**
+- Set up automatic code formatting (black, prettier, etc.)
+- Configure linting rules appropriate for the language/framework
+- Include basic test structure and examples
+- Set up pre-commit hooks where beneficial
+- Document coding conventions and style guidelines
+
+**Project Structure Conventions**
+- Use consistent directory structures within project types
+- Separate source code, tests, documentation, and configuration
+- Include scripts directory for common development tasks
+- Use standard locations for configuration files
+- Document any deviations from standard structure
+
+## ❌ DON'T
+
+**Template Maintenance Mistakes**
+- Don't let templates become outdated with old dependencies or practices
+- Don't include sensitive information or credentials in templates
+- Don't create overly complex templates that obscure simple projects
+- Don't skip documentation of template choices and conventions
+
+**Project Setup Anti-patterns**
+- Don't skip project setup automation when it would save repeated work
+- Don't ignore established conventions without good reason
+- Don't mix different architectural patterns within the same project type
+- Don't leave placeholder content in production-ready projects
+
+## Template Categories
+
+**Backend Projects (Python/Node.js/etc.)**
+- Virtual environment setup instructions
+- Database configuration examples
+- API documentation structure
+- Environment variable templates
+- Docker configuration for development and production
+
+**Frontend Projects (React/Astro/etc.)**
+- Build tool configuration
+- Asset management setup
+- Component organization structure
+- Testing framework integration
+- Deployment pipeline configuration
+
+**WordPress Projects**
+- Theme/plugin development structure
+- Local development environment (Docker/Local)
+- Build tools for assets (Webpack/Vite)
+- WordPress coding standards configuration
+- Deployment and staging procedures
+
+**Full-Stack Projects**
+- Monorepo or multi-repo organization
+- Shared configuration management
+- Development environment orchestration
+- Cross-service communication patterns
+- Integrated testing strategies
+
+## Integration with AI Rules
+
+**Rulebook-AI Integration**
+- Include .rulebook-ai configuration in project templates
+- Document which AI rule packs are recommended for each project type
+- Provide project-specific AI rules when needed
+- Keep AI rules consistent with project conventions
+
+**Code Generation Standards**
+- Establish patterns for AI-generated code review
+- Document when AI assistance is appropriate vs. manual coding
+- Include AI-generated code attribution in comments when helpful
+- Maintain consistency between AI-generated and manually written code
+
+## Quality Assurance
+
+**Template Testing**
+- Regularly test project templates on clean environments
+- Verify all dependencies install correctly
+- Test that basic project functions work out of the box
+- Update templates when dependencies or practices change
+
+**Documentation Maintenance**
+- Keep setup instructions current with actual requirements
+- Test documentation steps on different operating systems when relevant
+- Update examples and screenshots when interfaces change
+- Gather feedback from developers using the templates
+
+**Version Management**
+- Tag template versions to allow rollback if needed
+- Document major changes and migration paths
+- Keep changelog of template updates
+- Coordinate template updates with team practices
+
+## Automation Opportunities
+
+**Project Initialization**
+- Create scripts to generate projects from templates
+- Automate initial git setup and remote configuration
+- Set up development environment with single command when possible
+- Generate project-specific documentation from templates
+
+**Maintenance Scripts**
+- Create scripts to update existing projects with template changes
+- Automate dependency updates across similar projects
+- Generate reports on project compliance with standards
+- Batch update common configuration changes
+
+This approach ensures consistent, high-quality project initialization while reducing repetitive setup work and maintaining standards across all development efforts.

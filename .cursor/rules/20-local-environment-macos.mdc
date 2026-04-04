@@ -1,0 +1,38 @@
+---
+id: local_environment_macos
+description: "Local development assumes macOS with Homebrew; use platform-appropriate approaches for cloud/CI environments"
+---
+
+# Local Environment: macOS
+
+The local development machine runs macOS. Assume macOS conventions, paths, and tooling for any local scripting or development work.
+
+## Local (macOS)
+
+- Homebrew is the package manager — `brew install` is the default for local tooling
+- Use macOS-native paths (`/usr/local/`, `/opt/homebrew/`, `~/Library/`, etc.)
+- Assume `zsh` as the default shell
+- Use `launchd` for local services, not `systemd`
+- Prefer macOS-compatible flags for CLI tools (e.g. BSD `sed`, `date`, etc.) or use GNU versions installed via Homebrew when needed
+
+## Remote / Cloud / CI
+
+When working in non-local environments, use platform-appropriate tooling:
+
+- **Docker**: Assume Debian/Alpine base images unless specified; use `apt-get` or `apk`
+- **GitHub Actions**: Use Ubuntu runners by default; use `apt-get` for dependencies
+- **DigitalOcean / Linux VMs**: Assume Ubuntu/Debian; use `apt-get` or `snap`
+- **General**: Don't assume Homebrew or macOS tools are available outside the local machine
+
+## ✅ DO
+
+- Use `brew install` for local tool installation
+- Detect the environment when writing cross-platform scripts
+- Use `/bin/bash` or `/bin/sh` for portable scripts targeting CI/cloud
+- Note BSD vs GNU differences when they matter (e.g. `sed -i ''` on macOS vs `sed -i` on Linux)
+
+## ❌ DON'T
+
+- Don't suggest `apt-get` for local macOS installs
+- Don't suggest `brew` in Dockerfiles, CI pipelines, or remote servers
+- Don't assume `systemd` locally or `launchd` remotely

@@ -1,0 +1,83 @@
+---
+id: server_log_analysis_on_demand
+description: "When users share server output, automatically analyze and present errors in actionable format"
+---
+
+# Server Log Analysis on Demand
+
+When users share local server output (via command history, pasted logs, or terminal output), automatically extract and analyze errors without being asked.
+
+## Trigger Patterns
+
+Automatically analyze when you see:
+- Command output containing server logs
+- Server startup messages followed by request logs
+- HTTP status codes in terminal output
+- Error patterns in development server output
+
+## Analysis Workflow
+
+### 1. Extract Error Information
+Scan for: HTTP error codes, error messages, failed requests, missing resources, repeated patterns.
+
+### 2. Group and Categorize
+Organize by:
+- **Type**: 404s, 500s, build errors, etc.
+- **Frequency**: one-time vs. repeated
+- **Severity**: critical vs. informational
+- **Resource**: files, routes, APIs, etc.
+
+### 3. Present Findings
+
+```
+🔍 Server Log Analysis
+
+Issues Detected:
+- 2 × Missing assets (404)
+- 1 × Missing favicon
+
+Missing Assets:
+  → /assets/style.css
+  → /assets/logos/logo.png
+
+Root Cause Analysis:
+[educated guess based on patterns]
+
+Verification Steps:
+1. [specific command to verify hypothesis]
+2. [specific file/config to review]
+```
+
+## ✅ DO
+
+- **Automatically analyze** shared server logs without being asked
+- **Identify patterns** proactively
+- **Offer specific next steps** based on findings
+- **Ask permission** before running diagnostic commands
+
+## ❌ DON'T
+
+- Don't wait for user to ask for analysis
+- Don't present raw logs without interpretation
+- Don't offer generic advice without analyzing the specific errors
+- Don't run commands without user permission
+
+## Common Scenarios
+
+### Build Output Mismatch
+Server requests `/assets/style.css`, build output has `dist/css/style.css` → path mismatch between build output and HTML references.
+
+### Assets Not Copied
+Server requests `/assets/logos/logo.png`, assets folder missing from dist → configure build tool to copy static assets.
+
+### Base Path Issues
+Paths are correct and files exist but still 404 → rebuild and hard refresh, or check base URL config.
+
+## Post-Analysis Flow
+
+1. Confirm issues found in the logs
+2. Propose investigation steps
+3. Execute verification commands (with permission)
+4. Suggest fixes based on findings
+
+**Always provide analysis proactively when server logs are shared. Users want immediate understanding of issues, not just confirmation that errors exist.**

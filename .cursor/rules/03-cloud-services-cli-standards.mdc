@@ -1,0 +1,131 @@
+---
+id: cloud_services_cli_standards
+description: "Standards for configuring and using cloud service CLIs and maintaining service integrations"
+---
+
+# Cloud Services & CLI Standards
+
+Establish consistent configuration and usage patterns for cloud service CLIs and API integrations.
+
+## ✅ DO
+
+**AWS CLI Configuration**
+- Use named profiles for different AWS accounts/environments
+- Configure profiles with descriptive names: `personal`, `work-dev`, `work-prod`
+- Set default regions appropriate for each profile
+- Use AWS SSO when available for better security
+- Store profiles in `~/.aws/config` and credentials in `~/.aws/credentials`
+
+**GitHub CLI (gh) Best Practices**
+- Authenticate using `gh auth login` with appropriate scopes
+- Use SSH keys for repository operations
+- Configure default settings for common operations
+- Use `gh` for workflow automation instead of web interface when possible
+- Set up aliases for frequently used commands
+
+**Docker Configuration**
+- Configure Docker daemon settings appropriately for development
+- Use BuildKit by default for improved build performance
+- Set up multi-platform builds when needed
+- Configure resource limits to prevent system impact
+- Keep commonly used Docker commands documented and accessible
+
+**Service Integration Principles**
+- Use environment-based configuration (development, staging, production)
+- Keep service credentials in appropriate secret management (direnv, not hardcoded)
+- Document which services require which credentials
+- Use service-specific CLI tools when available rather than generic HTTP clients
+
+## ❌ DON'T
+
+**Avoid Configuration Mistakes**
+- Don't use default/unnamed profiles for production services
+- Don't hardcode credentials in scripts or configuration files
+- Don't mix development and production credentials in the same profile
+- Don't ignore CLI tool updates that might include security fixes
+
+**Security Anti-patterns**
+- Don't store credentials in version control
+- Don't use overly broad permissions when specific scopes are available
+- Don't skip environment-specific configurations
+- Don't share credentials between different environments or projects
+
+## Configuration Examples
+
+**AWS CLI Profile Setup**
+```ini
+# ~/.aws/config
+[profile personal]
+region = us-west-2
+output = json
+
+[profile work-dev]
+region = us-east-1
+output = json
+sso_start_url = https://company.awsapps.com/start
+
+[profile work-prod]
+region = us-east-1
+output = json
+sso_start_url = https://company.awsapps.com/start
+```
+
+**GitHub CLI Configuration**
+```bash
+# Set up useful aliases
+gh alias set prs 'pr list --assignee @me'
+gh alias set issues 'issue list --assignee @me'
+gh alias set co 'pr checkout'
+
+# Configure default behavior
+gh config set git_protocol ssh
+gh config set editor vim
+```
+
+**Common Docker Commands Reference**
+```bash
+# Development workflow
+docker-compose up -d
+docker-compose logs -f
+docker system prune  # cleanup
+
+# Multi-platform builds
+docker buildx create --use
+docker buildx build --platform linux/amd64,linux/arm64
+```
+
+## Service-Specific Guidelines
+
+**AWS Services**
+- Use least-privilege IAM policies
+- Prefer temporary credentials over long-lived access keys
+- Use AWS profiles for different environments
+- Document which AWS services each project uses
+
+**GitHub Integration**
+- Use GitHub CLI for repository operations
+- Set up repository templates with consistent structure
+- Use GitHub Actions for CI/CD when appropriate
+- Keep issue and PR templates updated
+
+**Docker Workflow**
+- Use multi-stage builds for production images
+- Keep Docker images minimal and secure
+- Use .dockerignore files appropriately
+- Document container dependencies and networking requirements
+
+## Backup and Recovery
+
+**Credential Backup**
+- Keep secure backups of important credentials (LastPass, 1Password, etc.)
+- Document credential recovery procedures
+- Test credential recovery process periodically
+- Keep emergency access methods documented
+
+**Configuration Backup**
+- Include CLI configurations in dotfiles management
+- Back up service-specific settings and preferences
+- Document service integrations and dependencies
+- Keep setup procedures documented for new machines
+
+This approach ensures reliable, secure access to cloud services while maintaining good security practices and operational consistency.

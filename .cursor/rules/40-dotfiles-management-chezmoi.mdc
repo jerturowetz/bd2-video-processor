@@ -1,0 +1,118 @@
+---
+id: dotfiles_management_chezmoi
+description: "Effective dotfiles management using chezmoi with automated workflows and proper file organization"
+---
+
+# Dotfiles Management with chezmoi
+
+Use chezmoi for version-controlled, automated dotfiles management with clear separation between managed configs and dynamic content.
+
+## ✅ DO
+
+**File Management Strategy**
+- Use `chezmoi managed` to verify what's tracked before making changes
+- Use `chezmoi re-add` (no arguments) to update all modified managed files at once
+- Use `chezmoi re-add <file>` for specific files when you know exactly what changed
+- Use `chezmoi status` to see what's been modified before re-adding
+- Keep `.gitignore` comprehensive to prevent unwanted file tracking
+
+**Content Organization**
+- Separate configuration files (managed by chezmoi) from dynamic/generated content
+- Use templates only when files need variable substitution across machines
+- Store machine-specific configs in separate files (e.g., `.gitconfig-work`)
+- Document the purpose of each managed file in README.md
+
+**Repository Hygiene**
+- Include comprehensive `.gitignore` for macOS (`.DS_Store`, `._*`, etc.)
+- Use `encrypted_*DS_Store*` patterns to catch encrypted unwanted files
+- Set up autocommit and autopush for seamless updates
+- Use descriptive commit messages that explain what changed
+
+**Backup and Recovery**
+- Keep backup copies of critical configs before major changes
+- Use `chezmoi archive` for full backups before system changes
+- Document recovery procedures in README.md
+- Test dotfiles installation on clean systems periodically
+
+## ❌ DON'T
+
+**Avoid These Mistakes**
+- Don't track dynamic content like logs, caches, or generated files
+- Don't use chezmoi for secrets management - use direnv instead
+- Don't commit `.DS_Store` or other OS-generated files
+- Don't edit files directly in `~/.local/share/chezmoi/` - use `chezmoi edit`
+
+**Management Anti-patterns**
+- Don't add entire directories without understanding what's in them
+- Don't use encryption for non-sensitive files that need frequent access
+- Don't ignore the `.gitignore` - add patterns proactively
+- Don't skip `--dry-run` testing for complex changes
+
+## Common Workflows
+
+**Daily Updates**
+```bash
+# Check what's changed
+chezmoi status
+
+# Update all modified files
+chezmoi re-add
+
+# Or update specific files
+chezmoi re-add ~/.zshrc ~/.gitconfig
+```
+
+**Adding New Files**
+```bash
+# Add a new config file
+chezmoi add ~/.newconfig
+
+# Add with encryption (only if needed)
+chezmoi add ~/.sensitive-config --encrypt
+```
+
+**Preventing Unwanted Files**
+```bash
+# Check what would be added before doing it
+find ~/config-dir -name ".*" | head -10
+
+# Use .gitignore patterns like:
+# .DS_Store
+# *.log
+# *.cache
+# encrypted_*DS_Store*
+```
+
+**Cross-Machine Sync**
+```bash
+# On new machine
+chezmoi init --apply username/dotfiles
+
+# Regular updates
+chezmoi update
+```
+
+## Integration with Other Tools
+
+**With direnv (for secrets)**
+- Don't manage `.envrc` files with chezmoi (they're project-specific)
+- Don't manage `~/.config/secrets/` with chezmoi (contains sensitive data)
+- Do document the relationship in README.md
+
+**With package managers**
+- Track package manager config files (`.npmrc`, etc.)
+- Don't track package installation lists unless they're minimal
+- Use separate setup scripts for package installation
+
+**Repository Structure**
+```
+dotfiles-repo/
+├── .gitignore                    # Comprehensive exclusions
+├── README.md                     # Usage and recovery docs
+├── dot_zshrc                     # Shell configuration
+├── dot_gitconfig                 # Git configuration
+├── private_dot_ssh/              # SSH configs and keys
+└── .chezmoiignore               # chezmoi-specific exclusions
+```
+
+This approach maintains clean, version-controlled dotfiles while avoiding common pitfalls and keeping sensitive data properly separated.

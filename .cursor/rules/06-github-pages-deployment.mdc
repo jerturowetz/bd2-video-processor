@@ -1,0 +1,175 @@
+---
+id: github_pages_deployment
+description: "GitHub Pages deployment workflow patterns, permissions, and scheduled rebuild strategies"
+---
+
+# GitHub Pages Deployment
+
+Standards for deploying static sites to GitHub Pages using GitHub Actions with the official Pages actions.
+
+## Action Chain
+
+Deploy to GitHub Pages using the three official actions, always pinned by SHA:
+
+```yaml
+# 1. Configure Pages (once per build job)
+- uses: actions/configure-pages@<sha> # v4
+
+# 2. Upload build output as a Pages artifact
+- uses: actions/upload-pages-artifact@<sha> # v3
+  with:
+    path: './dist'
+
+# 3. Deploy the artifact (separate job)
+- uses: actions/deploy-pages@<sha> # v4
+```
+
+### Job Structure
+
+Split build and deploy into separate jobs. The deploy job captures the Pages URL as an environment output:
+
+```yaml
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - # checkout, setup, build...
+      - uses: actions/configure-pages@<sha> # v4
+      - uses: actions/upload-pages-artifact@<sha> # v3
+        with:
+          path: './dist'
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@<sha> # v4
+```
+
+## Permissions
+
+Pages deployments require elevated permissions beyond the typical `contents: read`:
+
+```yaml
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+```
+
+- `pages: write` — required to publish to the Pages environment
+- `id-token: write` — required for OIDC token exchange with the Pages deployment API
+- `contents: read` — checkout access
+
+When the deploy workflow calls a reusable CI workflow via `workflow_call`, scope the CI job to `contents: read` only:
+
+```yaml
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+```
+
+## Concurrency
+
+Use a concurrency group to prevent overlapping deploys. Set `cancel-in-progress: false` to avoid aborting a deploy mid-flight:
+
+```yaml
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+```
+
+This ensures only one deploy runs at a time, but a running deploy always finishes before the next one starts.
+
+## Triggers
+
+### Standard Triggers
+
+```yaml
+on:
+  push:
+    branches: [main]       # Deploy on merge to main
+  workflow_dispatch:        # Manual deploy button in GitHub UI
+```
+
+### Scheduled Rebuilds
+
+For time-sensitive content (seasonal banners, date-driven messaging), add a cron schedule:
+
+```yaml
+on:
+  schedule:
+    - cron: '0 7 * * *'  # 2:00 AM EST (UTC-5) / 3:00 AM EDT (UTC-4)
+```
+
+- Cron times are always **UTC** — add a comment with the local time
+- Daily rebuilds keep time-sensitive content current without manual deploys
+- GitHub may delay scheduled workflows by a few minutes; don't rely on exact timing
+
+### CI Gate Before Deploy
+
+Use `workflow_call` to run full CI as a prerequisite:
+
+```yaml
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  build:
+    needs: ci
+    # ... build and upload artifact
+
+  deploy:
+    needs: build
+    # ... deploy
+```
+
+## Build Artifact
+
+- **Never commit `dist/`** — always generate it in CI
+- The `upload-pages-artifact` action handles packaging and transfer between jobs
+- Point it at the build output directory (e.g., `./dist`, `./build`, `./out`)
+
+## act Compatibility
+
+Pages actions require GitHub infrastructure and won't work with `act`. Guard them:
+
+```yaml
+- name: Setup Pages
+  if: ${{ !env.ACT }}
+  uses: actions/configure-pages@<sha> # v4
+
+- name: Upload artifact
+  if: ${{ !env.ACT }}
+  uses: actions/upload-pages-artifact@<sha> # v3
+  with:
+    path: './dist'
+```
+
+The deploy job itself won't run locally regardless, but skipping artifact upload prevents errors in local testing.
+
+## Best Practices
+
+### ✅ DO:
+- **Split build and deploy into separate jobs** — cleaner failure isolation
+- **Use `cancel-in-progress: false`** — never abort a live deploy
+- **Gate deploys on CI passing** via `workflow_call` + `needs`
+- **Add `workflow_dispatch`** — manual redeploy is useful for emergencies
+- **Comment the local timezone** on cron schedules
+- **Pin all three Pages actions by SHA**
+
+### ❌ DON'T:
+- **Commit build output** — generate it fresh in every CI run
+- **Use `cancel-in-progress: true`** for deploy jobs — this can leave Pages in a broken state
+- **Skip the `id-token: write` permission** — deploy will fail silently
+- **Rely on exact cron timing** — GitHub may delay scheduled runs
+- **Put build and deploy in the same job** — artifact upload is the clean handoff point

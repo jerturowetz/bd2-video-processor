@@ -1,0 +1,4 @@
+typer
+google-auth
+pillow
+rich

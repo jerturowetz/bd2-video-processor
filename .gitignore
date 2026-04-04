@@ -1,0 +1,8 @@
+.rulebook-ai/
+.rulebook-ai
+.cache/
+.DS_Store
+.envrc
+inputs/*.mp4
+detections.jsonl
+turn_boundaries.csv

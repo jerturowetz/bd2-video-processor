@@ -1,0 +1,103 @@
+---
+id: daily_development_workflows
+description: "Standardized daily workflows for development setup, maintenance, and common operations"
+---
+
+# Daily Development Workflows
+
+Establish consistent, efficient workflows for common development tasks and system maintenance.
+
+## ✅ DO
+
+**Morning Setup Routine**
+- Check system status: disk space, running services, updates needed
+- Update key repositories and configurations (`chezmoi update`, `git pull` on active projects)
+- Verify development environment health (language versions, key services running)
+- Review any overnight build failures or alerts
+
+**Project Switching Workflow**
+- Use `direnv` to automatically load project-specific environment variables
+- Verify correct language versions are active (check `.python-version`, `.nvmrc`)
+- Pull latest changes and check for dependency updates
+- Run health checks (tests, linting) after switching contexts
+
+**Common Development Operations**
+- Use consistent shortcuts and aliases for frequent operations
+- Maintain a personal command reference for complex operations
+- Use `gh` CLI for GitHub operations instead of web interface when possible
+- Keep commonly used Docker commands and configurations readily available
+
+**End-of-Day Cleanup**
+- Commit and push work in progress with clear WIP markers
+- Close unnecessary applications and free up system resources
+- Back up any important configuration changes
+- Review and clean up temporary files and downloads
+
+## ❌ DON'T
+
+**Avoid Inefficient Patterns**
+- Don't manually recreate the same environment setups repeatedly
+- Don't skip environment verification when switching projects
+- Don't leave uncommitted changes without clear tracking
+- Don't accumulate system clutter without regular cleanup
+
+**Bad Habits to Avoid**
+- Don't rely on memory for complex command sequences - document them
+- Don't skip backing up configurations before making changes
+- Don't ignore system health indicators (disk space, memory usage)
+- Don't let temporary solutions become permanent without proper implementation
+
+## Quick Reference Commands
+
+**System Status**
+```bash
+# Disk space and system health
+df -h
+top -l 1 | head -10
+brew doctor  # if using Homebrew
+```
+
+**Git Operations**
+```bash
+# Quick status across projects
+find ~/Projects -name .git -type d -exec dirname {} \; | xargs -I {} sh -c 'echo "\n=== {} ==="; git -C {} status --porcelain'
+
+# Common GitHub CLI operations
+gh repo list
+gh pr status
+gh issue list --assignee @me
+```
+
+**Development Environment**
+```bash
+# Verify language versions
+python --version && which python
+node --version && which node
+docker --version && docker ps
+
+# direnv status
+direnv status
+env | grep -E "(API_KEY|TOKEN)"
+```
+
+**Project Templates**
+- Maintain templates for new project initialization
+- Include standard files: README.md, .gitignore, .envrc template, basic CI/CD
+- Keep language-specific templates (Python with poetry, Node with package.json)
+- Document project setup steps that can't be automated
+
+## Integration with AI Tools
+
+**AI Rule Management**
+- Keep AI rules updated as development practices evolve
+- Use rulebook-ai project sync to apply rules to new projects
+- Document any project-specific AI rule requirements
+- Regular review of AI-generated code against established standards
+
+**Automation Opportunities**
+- Script repetitive setup tasks
+- Use make files or task runners for common project operations
+- Automate environment verification and health checks
+- Create shortcuts for complex multi-step operations
+
+This approach creates predictable, efficient workflows that scale across different projects and development contexts.

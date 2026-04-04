@@ -1,0 +1,70 @@
+---
+id: documentation_first_research
+description: Always prioritize comprehensive official documentation research before attempting custom implementations
+---
+
+# Documentation-First Research Protocol
+
+## Core Principle
+
+**ALWAYS research official documentation thoroughly before attempting any custom implementation, workaround, or third-party solution.**
+
+## Research Protocol
+
+### 1. Official Documentation Deep Dive
+✅ **DO:**
+- Search the complete official documentation, not just getting started guides
+- Look specifically for:
+  - Built-in features that solve your exact use case
+  - Template systems, themes, or layout options
+  - Configuration options and frontmatter
+  - Advanced features and reference sections
+- Check examples, tutorials, and advanced guides
+- Look for "reference" sections which often contain comprehensive feature lists
+
+❌ **DON'T:**
+- Skip to Stack Overflow or tutorials without exhausting official docs
+- Assume a feature doesn't exist because it's not in the getting started guide
+- Start with custom implementations before confirming no built-in solution exists
+
+### 2. Documentation Search Strategy
+✅ **Search for these patterns:**
+- Templates, themes, layouts
+- Configuration, frontmatter, options
+- Built-in components or features
+- Override, customize, extend
+- Advanced features, reference guides
+
+### 3. Framework-Specific Research
+✅ **For any framework/tool:**
+- Check the complete API reference
+- Look for plugin/extension ecosystems
+- Search for "recipes" or "guides" sections
+- Check GitHub discussions, issues, and examples
+- Review changelog for recent feature additions
+
+## Implementation Rule
+
+**Only after exhaustive documentation research should you consider:**
+1. Custom implementations
+2. Third-party libraries
+3. Workarounds or hacks
+4. Overriding core functionality
+
+## Real-World Example
+
+❌ **What happened:** Weeks spent creating custom landing page overrides for Astro Starlight
+✅ **What should have happened:** Found the built-in `splash` template in the frontmatter reference documentation in 10 minutes
+
+## Verification Questions
+
+Before any custom implementation, ask:
+1. Have I read the complete official documentation?
+2. Have I checked the API reference section?
+3. Have I searched for built-in templates, themes, or layouts?
+4. Have I looked at the configuration/frontmatter options?
+5. Does this framework have a feature that already solves this exact problem?
+
+## Time Investment Rule
+
+Spend at least 30 minutes in official documentation before considering custom solutions. Complex frameworks may require 1-2 hours of documentation research.

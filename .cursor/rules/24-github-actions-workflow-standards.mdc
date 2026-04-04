@@ -1,0 +1,62 @@
+---
+id: github_actions_workflow_standards
+description: "Security, maintainability, and correctness standards for GitHub Actions workflows"
+---
+
+# GitHub Actions Workflow Standards
+
+Write secure, maintainable, and correct GitHub Actions workflows by following these standards.
+
+## Security
+
+### Pin actions by SHA
+- Always pin third-party actions to a full commit SHA, not a mutable tag
+- Add a version comment for readability: `uses: actions/checkout@<sha> # v4`
+- Floating tags (`@v4`, `@main`) can be silently replaced with malicious code
+
+### Restrict permissions
+- Always include an explicit `permissions` block at the workflow level
+- Use the minimum permissions required (e.g., `contents: read` for CI)
+- Never rely on the repository's default token permissions
+
+### Pin Docker images
+- Use specific version tags for Docker images, not `:latest`
+- `:latest` is non-reproducible and can break without warning
+
+## Maintainability
+
+### Eliminate duplication with composite actions
+- When the same setup steps repeat across multiple jobs, extract them into a local composite action (e.g., `.github/actions/setup-project/action.yml`)
+- Composite actions accept inputs, making them flexible enough for slight variations (e.g., extra extensions, dev vs. prod installs)
+- This reduces workflow files to business logic only
+
+### Cache keys must reference committed files
+- Cache keys like `hashFiles('**/lockfile')` only work if the lockfile is committed
+- If a lockfile is gitignored, use the manifest file instead (e.g., `composer.json`, `package.json`)
+- A cache key that always resolves to the same hash is effectively no cache at all
+
+### Composer scripts must use vendor/bin/
+- Always reference tools via `vendor/bin/<tool>` in `composer.json` scripts
+- Bare command names (e.g., `phpunit`) depend on PATH, which varies between local, CI, and container environments
+- This applies equally to `phpcs`, `phpstan`, `phpunit`, and any other Composer-installed binary
+
+## act compatibility
+
+- Use `if: ${{ !env.ACT }}` to skip steps that require GitHub infrastructure (artifact uploads, Pages deployment, PR comments, Docker-in-Docker)
+- See the `local-ci-act` directive for full `act` setup and usage standards
+
+## ✅ DO
+
+- Pin all action versions by SHA with version comments
+- Add explicit `permissions` block to every workflow
+- Pin Docker image tags to specific versions
+- Extract repeated steps into composite actions
+- Verify cache keys reference committed files
+
+## ❌ DON'T
+
+- Don't use floating tags (`@v4`, `@latest`) for actions or Docker images
+- Don't rely on default repository permissions
+- Don't duplicate setup steps across multiple jobs
+- Don't use bare command names in CI scripts when a full path is available
+- Don't assume lockfiles exist in the repo without checking `.gitignore`

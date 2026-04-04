@@ -1,0 +1,248 @@
+---
+id: inline_comments_guidelines
+description: "Guidelines for writing clear, concise inline comments that enhance code readability by explaining reasoning and context"
+---
+
+# Inline Comments Guidelines
+
+Write clear, concise inline comments that enhance code readability by explaining the "why" and "reasoning" behind decisions, not restating what the code obviously does.
+
+## Core Principle
+
+**Comments should enhance code readability** by explaining reasoning behind business logic, architectural decisions, and providing context for future maintainers.
+
+## When to Comment
+
+### ✅ DO Comment:
+- **Explain reasoning** behind business logic or architectural decisions
+- **Document complex algorithms** or non-obvious implementations
+- **Clarify edge cases** or workarounds for external limitations
+- **Provide context** for future maintainers about historical decisions
+- **Document assumptions** that might not be obvious
+- **Explain "magic numbers"** or configuration values
+- **Describe performance optimizations** and their trade-offs
+
+### ❌ DON'T Comment:
+- **Obvious code** that clearly describes what it does
+- **Simple variable assignments** or basic operations
+- **Self-documenting code** where the intent is clear from naming
+- **Every single line** - over-commenting reduces readability
+
+## Formatting Requirements
+
+### General Comments
+- Use **sentence case** (capitalize first word)
+- Include **proper punctuation** (periods, commas, etc.)
+- Keep comments **brief and focused**
+- Place comments **above** the relevant code line(s)
+- Use consistent comment style for the language
+
+### Language-Specific Formats
+```php
+// PHP: Use double slashes for single-line comments.
+/* PHP: Use block comments for multi-line explanations. */
+```
+
+```javascript
+// JavaScript: Use double slashes for single-line comments.
+/* JavaScript: Use block comments for multi-line explanations. */
+```
+
+```python
+# Python: Use hash for single-line comments.
+"""Python: Use triple quotes for docstrings and multi-line comments."""
+```
+
+## Comment Examples
+
+### ✅ Good Comments
+
+```php
+// Validate user permissions before processing sensitive data.
+if (!current_user_can('manage_options')) {
+    return new WP_Error('insufficient_permissions');
+}
+
+// Cache expensive API response for 5 minutes to reduce load.
+$cached_data = get_transient('api_response_' . $user_id);
+
+// Workaround for legacy browser compatibility with CSS Grid.
+if (!$this->supports_modern_css()) {
+    $this->use_fallback_layout();
+}
+
+// Rate limit API calls to avoid hitting external service limits.
+if ($this->get_request_count() > self::MAX_REQUESTS_PER_MINUTE) {
+    sleep(60);
+}
+```
+
+```javascript
+// Debounce search input to avoid excessive API calls during typing.
+const debouncedSearch = debounce(handleSearch, 300);
+
+// Handle legacy browser compatibility for CSS Grid.
+if (!CSS.supports('display', 'grid')) {
+  fallbackToFlexbox();
+}
+
+// Batch DOM updates to prevent layout thrashing.
+requestAnimationFrame(() => {
+  elements.forEach(el => el.classList.add('active'));
+});
+```
+
+```python
+# Cache API responses to avoid redundant network calls during development.
+cached_response = cache.get(api_key, max_age_hours=6)
+
+# Convert timestamps to UTC to ensure consistent timezone handling.
+utc_timestamp = local_time.astimezone(timezone.utc)
+
+# Use binary search for O(log n) lookup performance on large datasets.
+index = bisect.bisect_left(sorted_data, target_value)
+```
+
+### ❌ Poor Comments
+
+```php
+// Set the variable to true
+$is_enabled = true;
+
+// Loop through the array
+foreach ($items as $item) {
+    // Do something with the item
+    process_item($item);
+}
+
+// Get the user ID
+$user_id = get_current_user_id();
+```
+
+```javascript
+// Get the element
+const element = document.getElementById('myElement');
+
+// Add click event listener
+element.addEventListener('click', handleClick);
+
+// Return the result
+return result;
+```
+
+```python
+# Increment counter
+counter += 1
+
+# Print the value
+print(value)
+
+# Create empty list
+items = []
+```
+
+## TODO Comments
+
+### Format
+All TODO comments must follow this exact format:
+
+```
+// TODO: [clear, actionable description]
+```
+
+### Examples
+
+```php
+// TODO: Implement proper error handling for failed API calls.
+// TODO: Add unit tests for this authentication function.
+// TODO: Remove debug logging before production deployment.
+// TODO: Optimize database queries for better performance.
+```
+
+```javascript
+// TODO: Add loading states for better user experience.
+// TODO: Extract this logic into a reusable custom hook.
+// TODO: Implement proper error boundaries for component failures.
+// TODO: Add accessibility attributes for screen readers.
+```
+
+```python
+# TODO: Implement retry logic for failed API requests.
+# TODO: Add type hints for better code documentation.
+# TODO: Optimize algorithm for better time complexity.
+# TODO: Add validation for edge cases.
+```
+
+### TODO Guidelines
+- Write **clear, actionable descriptions**
+- Use **sentence case** with proper punctuation
+- Focus on **what needs to be done**, not how
+- Place TODO comments **immediately before** the relevant code
+- **Remove TODOs** when the work is completed
+- **Track TODOs** in issue trackers for larger tasks
+
+## Complex Logic Documentation
+
+### Algorithm Explanations
+```python
+# Implement Floyd's cycle detection algorithm to find duplicates.
+# Uses two pointers moving at different speeds to detect cycles in O(n) time.
+slow = nums[0]
+fast = nums[0]
+
+# Phase 1: Detect if cycle exists
+do:
+    slow = nums[slow]
+    fast = nums[nums[fast]]
+while slow != fast:
+```
+
+### Business Logic Context
+```javascript
+// Apply promotional discount only for first-time customers
+// during the holiday season (Nov 1 - Jan 15) to increase conversion.
+const isEligibleForDiscount = (
+  customer.isFirstTime &&
+  isHolidaySeason(currentDate) &&
+  !customer.hasUsedPromotion
+);
+```
+
+### Performance Optimizations
+```php
+// Pre-load user permissions to avoid N+1 query problem.
+// Single query fetches all permissions instead of individual lookups.
+$user_permissions = $this->get_bulk_user_permissions($user_ids);
+```
+
+## Best Practices
+
+### ✅ DO:
+- **Focus on the "why"** rather than the "what"
+- **Explain business rules** and their context
+- **Document assumptions** that might not be obvious
+- **Use proper grammar** and punctuation
+- **Keep comments current** - update them when code changes
+- **Write for future maintainers** including yourself in 6 months
+
+### ❌ DON'T:
+- **State the obvious** - good code is self-documenting
+- **Write novels** - keep comments concise and focused
+- **Leave outdated comments** - they mislead more than they help
+- **Comment bad code** - refactor it instead
+- **Use comments to disable code** - use version control instead
+
+## Comment Maintenance
+
+### During Code Reviews
+- **Check comment accuracy** - do they still match the code?
+- **Identify missing context** - where would comments help future maintainers?
+- **Remove obvious comments** - they add noise without value
+- **Ensure TODO format** - consistent formatting helps tracking
+
+### During Refactoring
+- **Update relevant comments** when changing code behavior
+- **Remove outdated comments** that no longer apply
+- **Add comments for new complexity** introduced during refactoring
+
+**Remember: Good comments explain WHY the code exists and WHY decisions were made, not WHAT the code is doing.**

@@ -1,0 +1,94 @@
+---
+id: local_server_error_monitoring
+description: "Automatically extract, format, and present local development server errors for easy debugging"
+---
+
+# Local Server Error Monitoring
+
+When users run local development servers (http-server, Vite, Astro, Netlify dev, etc.), automatically monitor output for errors and present them in a clear, actionable format.
+
+## When to Monitor
+
+Trigger on server output containing:
+- HTTP 404/500 errors
+- Build/compilation errors
+- Asset loading failures
+- CORS errors
+- Port conflicts
+- Module resolution errors
+
+## Error Presentation Format
+
+### Summary First
+
+```
+🔍 Server Issues Detected:
+- 3 × 404 errors (missing assets)
+- 1 × favicon missing
+```
+
+### Detailed Breakdown
+
+List each unique error with type, affected resource, frequency, and suggested fix:
+
+```
+📁 Missing Assets (404):
+  → /assets/style.css
+  → /assets/logos/logo.png
+
+  Likely cause: Build output path mismatch
+  Check: Does `dist/assets/` contain these files?
+```
+
+## Common Error Patterns
+
+### 404 Errors
+- Verify file exists in build output
+- Check asset path configuration
+- Verify build process completed successfully
+
+### Asset Path Issues
+Common causes:
+1. Build output path configured incorrectly
+2. Assets not copied during build
+3. Base URL path mismatch
+
+Quick checks: `ls -la dist/assets/` and review build config (vite.config.js, astro.config.mjs, etc.)
+
+### Port Conflicts
+Quick fixes:
+- Kill process: `lsof -ti:XXXX | xargs kill`
+- Use different port: `--port 3001`
+- Check for zombie processes: `ps aux | grep node`
+
+### Build Errors
+Present with: affected file, line number (if available), and specific fix based on error type.
+
+## ✅ DO
+
+- **Automatically scan** server output for error patterns
+- **Group similar errors** to reduce noise
+- **Provide actionable suggestions** for each error type
+- **Show file paths** relative to project root
+- **Count repeated errors** to highlight frequency
+
+## ❌ DON'T
+
+- Don't show raw log output without processing
+- Don't present errors without context or suggestions
+- Don't ignore patterns that indicate common misconfigurations
+- Don't skip verification steps that could clarify root cause
+
+## Server-Specific Patterns
+
+**http-server**: 404 errors, missing files, CORS issues
+**Vite/Astro**: Module resolution errors, hot reload failures, asset transformation issues
+**Netlify Dev**: Function errors, redirect/rewrite issues, environment variable problems
+
+## Proactive Debugging
+
+After detecting errors, offer to:
+1. Check build output — verify files exist where expected
+2. Review configuration — check relevant config files
+3. Compare paths — match requested paths to actual file structure
+4. Suggest fixes — based on common patterns and project type

@@ -1,0 +1,155 @@
+---
+id: digitalocean_observability
+description: "DigitalOcean logging, monitoring, and observability best practices"
+---
+
+# DigitalOcean Observability
+
+Implement comprehensive observability for DigitalOcean infrastructure to ensure reliability and enable proactive problem resolution.
+
+## ✅ DO
+
+### Logging
+- **Centralize logs** using DO Spaces, Papertrail, ELK stack, or similar
+- **Tag logs with environment and version metadata** for easy filtering
+- **Structure logs in JSON format** when possible for better parsing
+- **Set up log rotation** to prevent disk space issues
+- **Archive logs regularly** for compliance and historical analysis
+
+### Health Checks & Monitoring
+- **Expose `/health` endpoints** for all services
+- **Implement readiness and liveness checks** for containerized applications
+- **Set up external monitoring** (UptimeRobot, Pingdom) for critical services
+- **Monitor key metrics**: CPU, memory, disk usage, network I/O
+- **Create custom dashboards** for application-specific metrics
+
+### Alerting
+- **Configure alerting thresholds** based on historical data and SLAs
+- **Set up escalation policies** for different severity levels
+- **Use multiple notification channels** (email, Slack, PagerDuty)
+- **Implement alert fatigue prevention** with proper grouping and suppression
+
+### Performance Monitoring
+- **Track response times** and error rates for all endpoints
+- **Monitor database performance** including slow queries and connections
+- **Set up APM tools** (New Relic, DataDog) for application insights
+- **Monitor resource utilization trends** to predict scaling needs
+
+## ❌ DON'T
+
+### Logging Mistakes
+- Don't store logs only locally without backup or centralization
+- Don't log sensitive information (passwords, tokens, PII)
+- Don't ignore log rotation - prevent disk space exhaustion
+- Don't use inconsistent log formats across services
+
+### Monitoring Anti-patterns
+- Don't rely solely on internal monitoring without external checks
+- Don't set up alerts without clear ownership and response procedures
+- Don't monitor everything - focus on business-critical metrics
+- Don't ignore baseline establishment for meaningful alerting
+
+### Performance Monitoring Issues
+- Don't monitor only infrastructure metrics - include application metrics
+- Don't set alert thresholds without understanding normal behavior patterns
+- Don't forget to monitor batch jobs and background processes
+- Don't overlook user experience metrics (page load times, error rates)
+
+## Implementation Examples
+
+### Centralized Logging Setup
+```bash path=null start=null
+# Configure rsyslog to send to external service
+echo "*.* @@logs.papertrailapp.com:XXXXX" >> /etc/rsyslog.conf
+systemctl restart rsyslog
+
+# Docker logging driver for centralized logs
+docker run -d --log-driver=syslog --log-opt syslog-address=udp://logs.papertrailapp.com:XXXXX app
+```
+
+### Health Check Implementation
+```python path=null start=null
+# Flask health check endpoint
+@app.route('/health')
+def health_check():
+    checks = {
+        'database': check_database_connection(),
+        'redis': check_redis_connection(),
+        'external_api': check_external_services()
+    }
+    
+    if all(checks.values()):
+        return jsonify({'status': 'healthy', 'checks': checks}), 200
+    else:
+        return jsonify({'status': 'unhealthy', 'checks': checks}), 503
+```
+
+### Monitoring Script
+```bash path=null start=null
+#!/bin/bash
+# Basic monitoring script for cron
+SERVICE_URL="https://your-app.com/health"
+LOG_FILE="/var/log/health-check.log"
+
+RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" $SERVICE_URL)
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+
+if [ $RESPONSE -ne 200 ]; then
+    echo "$TIMESTAMP - Health check failed: HTTP $RESPONSE" >> $LOG_FILE
+    # Send alert notification
+    curl -X POST -H 'Content-type: application/json' \
+        --data '{"text":"Service health check failed"}' \
+        $SLACK_WEBHOOK_URL
+fi
+```
+
+### Custom Metrics Collection
+```bash path=null start=null
+# Send custom metrics to DigitalOcean Monitoring
+curl -X POST "https://api.digitalocean.com/v2/monitoring/metrics" \
+  -H "Authorization: Bearer $DO_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "data": [{
+      "name": "custom.app.active_users",
+      "value": 150,
+      "timestamp": 1609459200,
+      "tags": {
+        "environment": "production",
+        "service": "web-app"
+      }
+    }]
+  }'
+```
+
+## Monitoring Stack Example
+
+### Basic Stack Components
+- **DigitalOcean Monitoring**: Built-in infrastructure metrics
+- **Papertrail**: Centralized log management
+- **UptimeRobot**: External uptime monitoring
+- **Grafana + Prometheus**: Custom dashboards and metrics
+
+### Advanced Stack Components  
+- **DataDog or New Relic**: APM and detailed application monitoring
+- **PagerDuty**: Alert management and escalation
+- **Sentry**: Error tracking and performance monitoring
+- **DO Spaces**: Long-term log and metric storage
+
+## Observability Checklist
+
+### Initial Setup
+- [ ] Log centralization configured
+- [ ] Health checks implemented for all services
+- [ ] Basic monitoring alerts set up
+- [ ] External uptime monitoring configured
+- [ ] Dashboard created for key metrics
+
+### Ongoing Operations
+- [ ] Log retention policies implemented
+- [ ] Alert thresholds reviewed and tuned monthly
+- [ ] Dashboards updated with new services
+- [ ] Monitoring coverage assessed quarterly
+- [ ] Incident response procedures documented
+
+This comprehensive observability approach ensures you can detect, diagnose, and resolve issues quickly while maintaining system reliability.

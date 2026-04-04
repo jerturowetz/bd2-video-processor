@@ -1,0 +1,148 @@
+---
+id: python_standards
+description: "Core Python development standards and best practices overview"
+---
+
+# Python Standards Overview
+
+Core Python development standards and best practices for consistent, maintainable code.
+
+## Core Principles
+
+### Code Quality Standards
+- **Follow PEP 8** for style consistency
+- **Use Black formatter** for automatic code formatting (88 character line length)
+- **Write descriptive names** that clearly indicate purpose
+- **Keep functions small** and focused on single responsibility
+- **Use type hints** consistently across your codebase
+
+### Development Environment
+- **Always use virtual environments** (`venv`, `conda`, or `poetry`)
+- **Never install packages globally** for project work
+- **Use `python-dotenv`** for environment variable management
+- **Include dependency files** (`requirements.txt` or `pyproject.toml`)
+
+### Error Handling
+- **Use specific exception types**, not bare `except:`
+- **Create custom exceptions** for domain-specific errors
+- **Include contextual information** in error messages
+- **Implement retry logic** for transient failures
+
+### Documentation
+- **Use Google-style docstrings** for all public functions and classes
+- **Include usage examples** in docstrings for complex functions
+- **Document exceptions** that functions can raise
+- **Use type hints** for function parameters and return values
+
+### Testing
+- **Use pytest** as the testing framework
+- **Write descriptive test names** that explain the scenario
+- **Use the AAA pattern** (Arrange, Act, Assert)
+- **Mock external dependencies** to isolate units under test
+- **Aim for high test coverage** (80%+) with focus on quality
+
+## Quick Reference
+
+### Basic Code Style
+```python
+# Good naming and structure
+user_count = 42
+MAX_RETRIES = 3
+
+class UserManager:
+    """Manages user operations."""
+    
+    def get_active_users(self) -> List[User]:
+        """Return list of active users."""
+        return self._fetch_users(active=True)
+    
+    def _fetch_users(self, active: bool = True) -> List[User]:
+        """Internal method to fetch users."""
+        pass
+```
+
+### Import Organization
+```python
+# Standard library
+import os
+from pathlib import Path
+from typing import List, Optional
+
+# Third-party
+import requests
+from django.conf import settings
+
+# Local application
+from .models import User
+from .utils import helper_function
+```
+
+### Error Handling Pattern
+```python
+try:
+    result = api_call()
+except requests.exceptions.RequestException as e:
+    logger.error(f"API call failed: {e}")
+    return None
+except ValueError as e:
+    logger.warning(f"Invalid data: {e}")
+    return default_value
+```
+
+## Essential Tools
+
+### Code Quality
+```bash
+# Format code
+black src/
+
+# Lint code
+flake8 src/  # or ruff check src/
+
+# Type check
+mypy src/
+
+# Run tests with coverage
+pytest --cov=src
+```
+
+### Project Setup
+```bash
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Install development dependencies
+pip install -r requirements-dev.txt
+```
+
+## Configuration Example
+
+### pyproject.toml
+```toml
+[tool.black]
+line-length = 88
+target-version = ['py39']
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=src --cov-report=html"
+```
+
+## Related Rules
+
+For detailed guidance on specific areas:
+- **Code Style**: See `python-code-style.md` for formatting and naming conventions
+- **Error Handling**: See `python-error-handling.md` for exception patterns
+- **Documentation**: See `python-documentation.md` for docstring and type hint standards
+- **Testing**: See `python-testing.md` for comprehensive testing practices
+
+**Remember: Consistency is key. Establish team standards and stick to them across your entire project.**

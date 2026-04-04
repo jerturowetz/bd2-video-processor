@@ -1,0 +1,224 @@
+---
+id: python_code_style
+description: "Python code style, formatting, and naming conventions following PEP 8"
+---
+
+# Python Code Style and Formatting
+
+Python code style, formatting, and naming conventions following PEP 8 and modern Python development practices.
+
+## Basic Formatting
+
+### Indentation and Line Length
+- **Use 4 spaces** for indentation (no tabs)
+- **Maximum line length** of 88 characters (Black formatter style)
+- **Use parentheses** for line continuation when needed
+- **Add trailing comma** after last item in multi-line collections
+
+### String Formatting
+- **Use double quotes** for strings consistently
+- **Use f-strings** for string interpolation (Python 3.6+)
+- **Use triple double quotes** for docstrings
+
+```python
+# Good string formatting
+name = "John Doe"
+message = f"Hello, {name}!"
+items = [
+    "apple",
+    "banana",
+    "cherry",  # Trailing comma
+]
+```
+
+## Naming Conventions
+
+### Variable and Function Names
+- **Functions and variables**: `snake_case`
+- **Constants**: `UPPER_CASE`
+- **Classes**: `PascalCase`
+- **Modules**: `lowercase` or `lower_with_underscores`
+
+### Access Modifiers
+- **Public**: `public_method()`
+- **Internal use**: `_single_leading_underscore`
+- **Name mangling**: `__double_leading_underscore`
+- **Special methods**: `__dunder_methods__`
+
+```python
+# Good naming examples
+user_count = 42
+MAX_RETRIES = 3
+DEFAULT_TIMEOUT = 30
+
+class UserManager:
+    """Manages user operations."""
+    
+    def get_active_users(self):
+        """Public method to get active users."""
+        return self._fetch_users()
+    
+    def _fetch_users(self):
+        """Internal method to fetch users from database."""
+        return self.__query_database()
+    
+    def __query_database(self):
+        """Private method for database operations."""
+        pass
+```
+
+## Import Organization
+
+### Import Grouping
+**Group imports in this order:**
+1. Standard library imports
+2. Related third-party library imports  
+3. Local application/library imports
+
+**Sort alphabetically within each group and separate groups with blank lines:**
+
+```python
+# Standard library
+import os
+import sys
+from pathlib import Path
+from typing import Dict, List, Optional
+
+# Third-party
+import requests
+from django.conf import settings
+from sqlalchemy import create_engine
+
+# Local application
+from .models import User
+from .utils import helper_function
+from ..services import external_service
+```
+
+### Import Best Practices
+- **Use absolute imports** when possible
+- **Avoid wildcard imports** (`from module import *`)
+- **Use explicit imports** for better readability
+- **Import modules, not individual functions** when importing many items
+
+```python
+# ✅ Good
+import json
+from typing import List, Dict, Optional
+
+# ❌ Avoid
+from json import *
+from some_module import func1, func2, func3, func4, func5
+```
+
+## Code Organization
+
+### Function Organization
+- **Keep functions small** and focused on single responsibility
+- **Use descriptive names** that clearly indicate purpose
+- **Order functions logically** - public methods first, then private
+
+### Class Organization
+```python
+class ExampleClass:
+    """Class-level docstring."""
+    
+    # Class variables
+    CLASS_CONSTANT = "value"
+    
+    def __init__(self, param):
+        """Initialize instance."""
+        self.instance_var = param
+        self._private_var = None
+    
+    # Public methods
+    def public_method(self):
+        """Public interface method."""
+        return self._helper_method()
+    
+    # Private methods
+    def _helper_method(self):
+        """Internal helper method."""
+        pass
+    
+    # Special methods
+    def __str__(self):
+        """String representation."""
+        return f"ExampleClass({self.instance_var})"
+```
+
+## Formatting Tools Integration
+
+### Black Formatter
+```bash
+# Install Black
+pip install black
+
+# Format code
+black src/
+
+# Check what would be formatted
+black --check src/
+
+# Configuration in pyproject.toml
+[tool.black]
+line-length = 88
+target-version = ['py39']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  migrations/
+  | \.git
+  | \.venv
+)/
+'''
+```
+
+### Other Formatting Tools
+```bash
+# isort for import organization
+pip install isort
+isort src/
+
+# autopep8 for PEP 8 compliance
+pip install autopep8
+autopep8 --in-place --recursive src/
+```
+
+## Configuration Files
+
+### pyproject.toml Example
+```toml
+[tool.black]
+line-length = 88
+target-version = ['py39']
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["myproject"]
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "W503"]
+```
+
+## Best Practices
+
+### ✅ DO:
+- **Follow PEP 8** for style consistency
+- **Use automated formatters** like Black to maintain consistency
+- **Be consistent** within a project - establish team standards
+- **Use meaningful names** that describe purpose, not implementation
+- **Keep line length reasonable** for readability on different screen sizes
+- **Use blank lines** to separate logical sections
+
+### ❌ DON'T:
+- **Mix tabs and spaces** - use only spaces
+- **Use single-letter variable names** except for short loops
+- **Write overly long lines** that require horizontal scrolling
+- **Use inconsistent naming** within the same codebase
+- **Skip the formatter** - automate style consistency
+
+**Remember: Consistent code style makes code easier to read, maintain, and collaborate on. Use automated tools to enforce consistency across your team.**

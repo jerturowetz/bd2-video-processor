@@ -1,0 +1,464 @@
+---
+id: python_testing
+description: "Python testing standards using pytest with comprehensive test organization and coverage guidelines"
+---
+
+# Python Testing Standards
+
+Python testing standards using pytest with comprehensive test organization and coverage guidelines.
+
+## Testing Framework
+
+### pytest as Standard
+Use **pytest** as the primary testing framework for all Python projects:
+
+```bash
+# Install pytest with common plugins
+pip install pytest pytest-cov pytest-mock pytest-xdist
+
+# Run tests
+pytest
+
+# Run with coverage
+pytest --cov=src --cov-report=html
+
+# Run tests in parallel
+pytest -n auto
+```
+
+## Test Organization
+
+### Directory Structure
+```
+project/
+├── src/
+│   ├── myproject/
+│   │   ├── __init__.py
+│   │   ├── models.py
+│   │   └── services.py
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py              # Shared fixtures
+│   ├── unit/
+│   │   ├── __init__.py
+│   │   ├── test_models.py
+│   │   └── test_services.py
+│   ├── integration/
+│   │   ├── __init__.py
+│   │   └── test_api_integration.py
+│   └── fixtures/
+│       ├── sample_data.json
+│       └── test_database.db
+└── pytest.ini
+```
+
+### Test File Naming
+- Test files: `test_*.py` or `*_test.py`
+- Test functions: `test_*`
+- Test classes: `Test*`
+
+## Test Writing Best Practices
+
+### Test Function Structure (AAA Pattern)
+```python
+import pytest
+from myproject.services import UserService
+from myproject.models import User
+
+class TestUserService:
+    """Test cases for UserService class."""
+    
+    def test_create_user_returns_user_when_valid_data_provided(self):
+        """Test that create_user returns a User object with valid input."""
+        # Arrange
+        service = UserService()
+        email = "test@example.com"
+        name = "Test User"
+        
+        # Act
+        result = service.create_user(email=email, name=name)
+        
+        # Assert
+        assert isinstance(result, User)
+        assert result.email == email
+        assert result.name == name
+        assert result.id is not None
+    
+    def test_create_user_raises_validation_error_when_invalid_email(self):
+        """Test that create_user raises ValidationError with invalid email."""
+        # Arrange
+        service = UserService()
+        invalid_email = "not-an-email"
+        name = "Test User"
+        
+        # Act & Assert
+        with pytest.raises(ValidationError, match="Invalid email format"):
+            service.create_user(email=invalid_email, name=name)
+```
+
+### Descriptive Test Names
+Use descriptive names that explain the scenario:
+
+```python
+# ✅ Good test names
+def test_should_return_user_when_valid_id_provided(self):
+def test_should_raise_not_found_error_when_user_does_not_exist(self):
+def test_should_calculate_correct_total_when_multiple_items_provided(self):
+def test_should_handle_empty_list_gracefully(self):
+
+# ❌ Poor test names
+def test_get_user(self):
+def test_calculate(self):
+def test_error(self):
+```
+
+## Fixtures and Test Data
+
+### Using pytest Fixtures
+```python
+# conftest.py
+import pytest
+from myproject.database import Database
+from myproject.models import User
+
+@pytest.fixture
+def database():
+    """Provide a test database instance."""
+    db = Database(":memory:")  # In-memory SQLite for tests
+    db.create_tables()
+    yield db
+    db.close()
+
+@pytest.fixture
+def sample_user():
+    """Provide a sample user for testing."""
+    return User(
+        id=1,
+        email="test@example.com",
+        name="Test User",
+        is_active=True
+    )
+
+@pytest.fixture
+def user_service(database):
+    """Provide a UserService instance with test database."""
+    from myproject.services import UserService
+    return UserService(database=database)
+
+@pytest.fixture
+def sample_users():
+    """Provide multiple sample users."""
+    return [
+        User(id=1, email="user1@test.com", name="User One"),
+        User(id=2, email="user2@test.com", name="User Two"),
+        User(id=3, email="user3@test.com", name="User Three"),
+    ]
+```
+
+### Using Fixtures in Tests
+```python
+def test_get_user_returns_correct_user(user_service, sample_user):
+    """Test retrieving a specific user."""
+    # Arrange
+    user_service.save_user(sample_user)
+    
+    # Act
+    result = user_service.get_user(sample_user.id)
+    
+    # Assert
+    assert result.email == sample_user.email
+    assert result.name == sample_user.name
+
+def test_get_all_users_returns_all_saved_users(user_service, sample_users):
+    """Test retrieving all users."""
+    # Arrange
+    for user in sample_users:
+        user_service.save_user(user)
+    
+    # Act
+    result = user_service.get_all_users()
+    
+    # Assert
+    assert len(result) == len(sample_users)
+    assert all(isinstance(user, User) for user in result)
+```
+
+## Mocking and Patching
+
+### Using pytest-mock
+```python
+def test_send_welcome_email_calls_email_service(mocker, user_service):
+    """Test that welcome email is sent when user is created."""
+    # Arrange
+    mock_email_service = mocker.patch('myproject.services.EmailService')
+    user_data = {"email": "test@example.com", "name": "Test User"}
+    
+    # Act
+    user = user_service.create_user(**user_data)
+    
+    # Assert
+    mock_email_service.send_welcome_email.assert_called_once_with(user.email)
+
+def test_api_retry_logic_with_temporary_failure(mocker, api_client):
+    """Test API retry logic with temporary failure."""
+    # Arrange
+    mock_request = mocker.patch('requests.post')
+    mock_request.side_effect = [
+        requests.exceptions.ConnectionError("Temporary failure"),
+        mocker.Mock(status_code=200, json=lambda: {"success": True})
+    ]
+    
+    # Act
+    result = api_client.make_request("/test", {"data": "test"})
+    
+    # Assert
+    assert result["success"] is True
+    assert mock_request.call_count == 2
+```
+
+### Mocking External Services
+```python
+@pytest.fixture
+def mock_notion_client(mocker):
+    """Mock Notion client for testing."""
+    client = mocker.Mock()
+    client.databases.query.return_value = {
+        "results": [
+            {
+                "id": "123",
+                "properties": {
+                    "Name": {"title": [{"plain_text": "Test Page"}]}
+                }
+            }
+        ]
+    }
+    return client
+
+def test_notion_service_processes_response_correctly(mock_notion_client):
+    """Test that NotionService correctly processes API response."""
+    # Arrange
+    service = NotionService(client=mock_notion_client)
+    database_id = "test-db-id"
+    
+    # Act
+    result = service.get_pages(database_id)
+    
+    # Assert
+    assert len(result) == 1
+    assert result[0]["name"] == "Test Page"
+    mock_notion_client.databases.query.assert_called_once_with(
+        database_id=database_id
+    )
+```
+
+## Parameterized Tests
+
+### Testing Multiple Scenarios
+```python
+@pytest.mark.parametrize("email,expected_valid", [
+    ("test@example.com", True),
+    ("user@domain.org", True),
+    ("invalid-email", False),
+    ("@domain.com", False),
+    ("user@", False),
+    ("", False),
+])
+def test_email_validation(email, expected_valid):
+    """Test email validation with various inputs."""
+    from myproject.utils import is_valid_email
+    
+    result = is_valid_email(email)
+    assert result == expected_valid
+
+@pytest.mark.parametrize("age,expected_category", [
+    (5, "child"),
+    (12, "child"),
+    (16, "teen"),
+    (18, "adult"),
+    (65, "senior"),
+    (80, "senior"),
+])
+def test_age_categorization(age, expected_category):
+    """Test age categorization logic."""
+    from myproject.utils import categorize_age
+    
+    result = categorize_age(age)
+    assert result == expected_category
+```
+
+### Complex Parameter Combinations
+```python
+@pytest.mark.parametrize("user_type,permissions,expected_access", [
+    ("admin", ["read", "write", "delete"], True),
+    ("user", ["read", "write"], False),
+    ("guest", ["read"], False),
+    ("admin", [], False),  # Admin with no permissions
+])
+def test_access_control(user_type, permissions, expected_access):
+    """Test access control logic."""
+    from myproject.auth import check_delete_access
+    
+    user = User(type=user_type, permissions=permissions)
+    result = check_delete_access(user)
+    assert result == expected_access
+```
+
+## Test Coverage
+
+### Coverage Configuration
+```ini
+# pytest.ini
+[tool:pytest]
+testpaths = tests
+python_files = test_*.py
+python_classes = Test*
+python_functions = test_*
+addopts = 
+    --cov=src
+    --cov-report=html
+    --cov-report=term-missing
+    --cov-fail-under=80
+markers =
+    slow: marks tests as slow
+    integration: marks tests as integration tests
+    unit: marks tests as unit tests
+```
+
+### Coverage Commands
+```bash
+# Run tests with coverage
+pytest --cov=src
+
+# Generate HTML coverage report
+pytest --cov=src --cov-report=html
+
+# Show missing lines in terminal
+pytest --cov=src --cov-report=term-missing
+
+# Fail if coverage below threshold
+pytest --cov=src --cov-fail-under=85
+```
+
+## Test Categories and Markers
+
+### Using pytest Markers
+```python
+import pytest
+
+@pytest.mark.unit
+def test_user_model_validation():
+    """Unit test for user model validation."""
+    pass
+
+@pytest.mark.integration
+def test_database_connection():
+    """Integration test for database operations."""
+    pass
+
+@pytest.mark.slow
+def test_bulk_data_processing():
+    """Slow test that processes large datasets."""
+    pass
+
+@pytest.mark.api
+def test_external_api_integration():
+    """Test external API integration."""
+    pass
+```
+
+### Running Specific Test Categories
+```bash
+# Run only unit tests
+pytest -m unit
+
+# Run integration tests
+pytest -m integration
+
+# Skip slow tests
+pytest -m "not slow"
+
+# Run API tests only
+pytest -m api
+```
+
+## Error and Exception Testing
+
+### Testing Expected Exceptions
+```python
+def test_divide_by_zero_raises_zero_division_error():
+    """Test that division by zero raises appropriate error."""
+    from myproject.calculator import divide
+    
+    with pytest.raises(ZeroDivisionError):
+        divide(10, 0)
+
+def test_invalid_user_id_raises_validation_error_with_message():
+    """Test specific error message for invalid user ID."""
+    service = UserService()
+    
+    with pytest.raises(ValidationError, match="User ID must be positive"):
+        service.get_user(-1)
+
+def test_api_timeout_raises_timeout_error():
+    """Test API timeout handling."""
+    api_client = APIClient(timeout=0.1)
+    
+    with pytest.raises(TimeoutError) as exc_info:
+        api_client.slow_operation()
+    
+    assert "Request timed out" in str(exc_info.value)
+```
+
+## Performance Testing
+
+### Basic Performance Tests
+```python
+import time
+import pytest
+
+def test_user_creation_performance():
+    """Test that user creation completes within reasonable time."""
+    service = UserService()
+    
+    start_time = time.time()
+    user = service.create_user("test@example.com", "Test User")
+    execution_time = time.time() - start_time
+    
+    assert user is not None
+    assert execution_time < 1.0  # Should complete within 1 second
+
+@pytest.mark.slow
+def test_bulk_operation_performance(sample_users):
+    """Test bulk operations performance."""
+    service = UserService()
+    
+    start_time = time.time()
+    results = service.bulk_create_users(sample_users)
+    execution_time = time.time() - start_time
+    
+    assert len(results) == len(sample_users)
+    assert execution_time < 5.0  # Should complete within 5 seconds
+```
+
+## Best Practices
+
+### ✅ DO:
+- **Write descriptive test names** that explain the scenario
+- **Use the AAA pattern** (Arrange, Act, Assert) for test structure
+- **Test both happy path and error cases**
+- **Use fixtures** for common test data and setup
+- **Mock external dependencies** to isolate units under test
+- **Aim for high test coverage** (80%+) but focus on quality over quantity
+- **Use parametrized tests** for testing multiple similar scenarios
+- **Keep tests independent** - they should be able to run in any order
+
+### ❌ DON'T:
+- **Write tests that depend on external services** in unit tests
+- **Test implementation details** - test behavior, not internal structure
+- **Write overly complex tests** - if a test is hard to understand, simplify it
+- **Skip edge cases** - test boundary conditions and error scenarios
+- **Use real databases or files** in unit tests - use mocks or in-memory alternatives
+- **Ignore failing tests** - fix them immediately or remove them
+- **Test everything** - focus on critical business logic and public APIs
+
+**Remember: Good tests serve as documentation, catch regressions, and give confidence when refactoring code.**

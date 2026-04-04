@@ -1,0 +1,53 @@
+---
+id: env_var_management
+description: "Standard patterns for loading environment variables with direnv and .env fallback"
+---
+
+# Environment Variable Management
+
+Support two automatic methods for loading environment variables in every project: direnv (recommended) and `.env` file fallback. No manual `source` or `export` commands needed.
+
+## File Responsibilities
+
+```
+.env.example          — Template. Committed to git. Lists all required vars.
+.env                  — Local values. Gitignored. Never committed.
+.envrc                — direnv config. Committed. Loads .env then secrets.
+Makefile              — Loads .env as fallback if direnv isn't active.
+```
+
+## Precedence (highest wins)
+
+1. Shell environment (already exported vars)
+2. direnv / secret manager overrides
+3. `.env` file values
+
+## ✅ DO
+
+**direnv Setup (Primary)**
+- Use `dotenv_if_exists` in `.envrc` to load `.env` when present
+- Override with secrets from a secrets manager (e.g. `export-secret`) when available
+- Require only `direnv allow` for first-time setup
+
+**`.env` Fallback (Secondary)**
+- Provide `.env.example` with all required vars and comments
+- Conditionally load `.env` in Makefile only when env vars aren't already set
+- Ensure all workflows function with just a `.env` file for contributors without direnv
+
+**Adding a New Variable**
+- Add to `.env.example` with an empty value and a comment
+- Add the `export` line to `.envrc`
+- Add a `ifndef` warning block in Makefile if it depends on it
+- Document it in the project README
+
+**Naming Conventions**
+- Terraform variables: `TF_VAR_<variable_name>` — prefix uppercase, variable name lowercase (e.g. `TF_VAR_cloudflare_api_token`)
+- Provider/tool credentials: Use the name the tool expects natively (e.g. `CLOUDFLARE_API_TOKEN`, `AWS_ACCESS_KEY_ID`)
+- Project-specific: `SCREAMING_SNAKE_CASE` (e.g. `R2_ENDPOINT`)
+
+## ❌ DON'T
+
+- Don't commit `.env` — it's gitignored
+- Don't pass secrets as CLI arguments — use env vars that tools read natively (`TF_VAR_*`, `AWS_*`), not `-var` or `-backend-config` flags
+- Don't let `.env.example` drift from `.envrc` — every variable should appear in both
+- Don't require direnv — all workflows must work with just `.env`

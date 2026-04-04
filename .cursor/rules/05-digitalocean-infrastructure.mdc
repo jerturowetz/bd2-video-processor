@@ -1,0 +1,70 @@
+---
+id: digitalocean_infrastructure
+description: "DigitalOcean infrastructure management and scalability best practices"
+---
+
+# DigitalOcean Infrastructure Management
+
+Manage DigitalOcean infrastructure for uptime, maintainability, and predictable performance.
+
+## ✅ DO
+
+### Monitoring & Alerts
+- **Enable DigitalOcean Monitoring** on all Droplets
+- **Set CPU, memory, and disk usage alerts** via email or Slack
+- **Use floating IPs** for quick failover and blue/green deployments
+
+### Backups & Recovery
+- **Enable automatic weekly backups** on all production Droplets
+- **Create manual snapshots** before any major change or deployment
+- **Maintain documented restore procedures**
+- **Test snapshot recovery** on staging environments regularly
+
+### Scalability & Architecture
+- **Use load balancers** to distribute traffic for production workloads
+- **Prefer managed services** (Managed Databases, DO Kubernetes) over self-managed instances
+- **Use DO Projects** or namespaces to isolate experiments from production
+- **Auto-tag Droplets and Spaces** by project + environment
+
+### Networking
+- **Enforce private networking** between Droplets where applicable
+- **Restrict SSH access** to known IPs using firewalls or VPC
+- **Use VPCs** for network isolation between environments
+
+## ❌ DON'T
+
+### Anti-patterns
+- Don't rely on single Droplets for production workloads without backup plans
+- Don't skip backup verification - test restore procedures
+- Don't mix production and development resources in same project
+- Don't ignore resource monitoring - set up alerts before problems occur
+
+### Scaling Mistakes
+- Don't manually scale without load balancers in place
+- Don't use unmanaged services when managed alternatives exist
+- Don't forget to tag resources for organization and billing tracking
+
+## Implementation Examples
+
+### Basic Monitoring Setup
+```bash
+# Enable monitoring via doctl CLI
+doctl compute droplet enable-monitoring DROPLET_ID
+
+# Set up basic firewall rules
+doctl compute firewall create --name "web-firewall" \
+  --inbound-rules "protocol:tcp,ports:80,source_addresses:0.0.0.0/0,::0/0" \
+  --inbound-rules "protocol:tcp,ports:443,source_addresses:0.0.0.0/0,::0/0" \
+  --inbound-rules "protocol:tcp,ports:22,source_addresses:YOUR_IP/32"
+```
+
+### Backup Automation
+```bash
+# Create snapshot before deployment
+doctl compute droplet-action snapshot DROPLET_ID --snapshot-name "pre-deploy-$(date +%Y%m%d)"
+
+# List recent snapshots
+doctl compute snapshot list --resource droplet
+```
+
+This approach ensures reliable, scalable DigitalOcean infrastructure that can handle production workloads.

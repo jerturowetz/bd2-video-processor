@@ -1,0 +1,118 @@
+---
+id: digitalocean_security
+description: "DigitalOcean security, access control, and hardening best practices"
+---
+
+# DigitalOcean Security
+
+Implement security best practices for DigitalOcean infrastructure to protect against unauthorized access and ensure compliance.
+
+## ✅ DO
+
+### Access Control
+- **Enforce SSH key authentication only** - disable password authentication
+- **Use separate API tokens** per environment (dev/staging/prod)
+- **Create sudo-capable user accounts** instead of using root directly
+- **Disable root login** via SSH configuration
+
+### System Hardening
+- **Automate OS updates** via cron or unattended-upgrades
+- **Configure automatic security updates** for critical patches
+- **Use fail2ban** or similar intrusion prevention systems
+- **Enable UFW or iptables** for host-based firewalls
+
+### Network Security
+- **Restrict SSH to known IPs** using DigitalOcean Firewalls
+- **Use private networking** for internal service communication
+- **Implement VPC isolation** between environments
+- **Close unused ports** and services
+
+### Secrets Management
+- **Never store secrets** in code or environment variables directly
+- **Use DO Secrets Manager** or HashiCorp Vault for sensitive data
+- **Rotate API keys and tokens** regularly
+- **Use service-specific credentials** with minimal required permissions
+
+## ❌ DON'T
+
+### Access Control Anti-patterns
+- Don't use password authentication for SSH access
+- Don't share API tokens between environments or team members
+- Don't use root account for routine operations
+- Don't hardcode credentials in deployment scripts
+
+### Network Security Mistakes
+- Don't expose services to 0.0.0.0/0 unless absolutely necessary
+- Don't use default firewall rules without reviewing them
+- Don't skip SSL/TLS termination for web services
+- Don't trust internal network traffic without authentication
+
+### Secrets Management Mistakes
+- Don't commit secrets to version control in any form
+- Don't use the same credentials across multiple environments
+- Don't store database passwords in plain text configuration files
+- Don't ignore credential rotation schedules
+
+## Implementation Examples
+
+### SSH Hardening
+```bash path=null start=null
+# /etc/ssh/sshd_config
+PasswordAuthentication no
+PermitRootLogin no
+PubkeyAuthentication yes
+MaxAuthTries 3
+ClientAliveInterval 300
+ClientAliveCountMax 2
+```
+
+### Firewall Setup
+```bash path=null start=null
+# Enable UFW and set defaults
+ufw default deny incoming
+ufw default allow outgoing
+
+# Allow essential services
+ufw allow ssh
+ufw allow 80/tcp
+ufw allow 443/tcp
+
+# Enable firewall
+ufw enable
+```
+
+### API Token Management
+```bash path=null start=null
+# Create environment-specific tokens
+doctl auth init --context production
+doctl auth init --context staging
+doctl auth init --context development
+
+# Switch between contexts
+doctl auth switch --context production
+```
+
+### Automated Updates
+```bash path=null start=null
+# Enable unattended upgrades (Ubuntu/Debian)
+echo 'Unattended-Upgrade::Automatic-Reboot "false";' >> /etc/apt/apt.conf.d/50unattended-upgrades
+systemctl enable unattended-upgrades
+```
+
+## Security Checklist
+
+### Initial Setup
+- [ ] SSH keys configured, password auth disabled
+- [ ] Root login disabled, sudo user created
+- [ ] Firewall rules configured and enabled
+- [ ] Automatic updates enabled
+- [ ] Monitoring and alerting set up
+
+### Ongoing Maintenance
+- [ ] API tokens rotated quarterly
+- [ ] Security updates applied monthly
+- [ ] Access logs reviewed regularly
+- [ ] Firewall rules audited quarterly
+- [ ] Backup encryption verified
+
+This approach provides defense in depth for DigitalOcean infrastructure while maintaining operational efficiency.

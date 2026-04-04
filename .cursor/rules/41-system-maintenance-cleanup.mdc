@@ -1,0 +1,108 @@
+---
+id: system_maintenance_cleanup
+description: "Systematic approach to identifying, evaluating, and cleaning up deprecated system configurations and folders"
+---
+
+# System Maintenance and Cleanup
+
+Regularly audit and clean up deprecated configurations, unused folders, and outdated system setups to maintain a clean development environment.
+
+## ✅ DO
+
+**Regular Audit Process**
+- Review hidden folders in home directory periodically (`ls -la ~ | grep "^\."`)
+- Check for duplicate functionality (e.g., multiple secrets management approaches)
+- Investigate unfamiliar folders before deletion - they may serve active purposes
+- Compare file modification dates to identify potentially deprecated content
+- Look for references in configs before removing directories
+
+**Safe Cleanup Methodology**
+- Always create backups before removing configurations: `cp -r ~/.old-config ~/.old-config.backup`
+- Use `find` and `grep` to search for references before deletion
+- Test functionality after removal to ensure nothing breaks
+- Document cleanup decisions for future reference
+- Remove empty directories after migrating contents: `rmdir ~/.empty-folder`
+
+**Configuration Migration**
+- Consolidate similar functionality into single, well-organized locations
+- Update all references when moving configurations
+- Use consistent patterns (e.g., all secrets in `~/.config/secrets/`)
+- Maintain clear documentation of new organization
+- Test all dependent systems after migration
+
+**Version Control Integration**
+- Update dotfiles repository to reflect cleanup changes
+- Remove old entries from tracking (e.g., `chezmoi forget ~/.deprecated-config`)
+- Update README files to document new organization
+- Commit cleanup changes with clear messages
+
+## ❌ DON'T
+
+**Avoid These Cleanup Mistakes**
+- Don't remove folders without understanding their purpose
+- Don't assume folders are deprecated based on age alone - check if they're actively used
+- Don't skip searching for references in scripts, configs, and documentation
+- Don't delete unique configurations that don't have clear replacements
+
+**Migration Anti-patterns**
+- Don't leave broken references after moving configurations
+- Don't create multiple competing systems for the same function
+- Don't ignore error messages after cleanup - they indicate missed references
+- Don't rush cleanup - systematic investigation prevents mistakes
+
+## Investigation Workflow
+
+**Identify Potential Cleanup Candidates**
+```bash
+# Find hidden folders/files modified more than 90 days ago
+find ~ -maxdepth 1 -name ".*" -type d -mtime +90
+
+# Look for duplicate functionality
+ls -la ~/.config/ | grep -i secret
+ls -la ~ | grep -i secret
+```
+
+**Evaluate Before Removal**
+```bash
+# Check for references in common config locations
+grep -r "deprecated-folder" ~/.zshrc ~/.bashrc ~/.config/ ~/.*rc
+
+# Look for recent file access
+find ~/.deprecated-folder -type f -atime -30  # accessed in last 30 days
+```
+
+**Safe Removal Process**
+```bash
+# 1. Create backup
+cp -r ~/.deprecated-config ~/.deprecated-config.$(date +%Y%m%d)
+
+# 2. Remove from version control if tracked
+chezmoi forget ~/.deprecated-config
+
+# 3. Remove actual folder
+rm -rf ~/.deprecated-config
+
+# 4. Test dependent systems
+```
+
+## Common Cleanup Scenarios
+
+**Secrets Management Consolidation**
+- Migrate from multiple secrets locations to single `~/.config/secrets/` structure
+- Update all environment variable references to new paths
+- Remove old secrets directories only after confirming migration success
+- Update documentation to reflect new organization
+
+**Dotfiles Organization**
+- Remove files from dotfiles tracking that are now managed elsewhere
+- Consolidate similar configuration files
+- Clean up `.gitignore` patterns after removing tracked files
+- Update repository documentation
+
+**Tool Migration**
+- Remove old tool configurations after migrating to new tools
+- Update shell aliases and PATH modifications
+- Clean up old scripts and shortcuts
+- Document tool migration decisions
+
+This systematic approach prevents accidental deletion of important configurations while maintaining a clean, organized development environment.

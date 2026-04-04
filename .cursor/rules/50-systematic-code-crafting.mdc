@@ -1,0 +1,112 @@
+---
+id: systematic_code_crafting
+description: "Build solutions incrementally with verification at every step, ensuring each component works before moving to the next"
+---
+
+# Systematic Code Crafting
+
+Build solutions incrementally with verification at every step, ensuring each component works before moving to the next.
+
+## Core Methodology
+
+### Build Incrementally
+- **One component at a time**: Implement and test each piece before moving to the next
+- **Verify functionality**: Test each increment independently before integration
+- **Start simple**: Begin with the most basic working version, then enhance
+- **Fail fast**: Identify issues early through constant verification
+
+### Verification at Every Step
+- **Test after each change**: Run the code/script after every significant modification
+- **Validate assumptions**: Use concrete tests to confirm each component works as expected
+- **Check integration points**: Verify that new components work with existing ones
+- **Measure progress**: Use concrete metrics to confirm functionality
+
+## Development Workflow
+
+### 1. Plan the Approach
+- Break down the solution into discrete, testable components
+- Identify the smallest working unit to build first
+- Map out dependencies and integration points
+- Define success criteria for each component
+
+### 2. Implement the Foundation
+- Build and test the basic structure
+- Ensure the foundation works independently
+- Document any assumptions or constraints discovered
+- Verify core functionality before adding features
+
+### 3. Add Features Incrementally
+- **One feature at a time** with testing
+- Verify each feature works before proceeding
+- Test integration with existing components
+- Maintain working state throughout development
+
+### 4. Integrate Carefully
+- Connect components one by one
+- Test each integration point thoroughly
+- Validate that new features work with existing code
+- Resolve conflicts as they arise
+
+### 5. Validate Completeness
+- Ensure all requirements are met
+- Test end-to-end functionality
+- Verify performance and edge cases
+- Document the complete solution
+
+## Implementation Guidelines
+
+### When Building New Features
+- **Start with a minimal working prototype**
+- Add complexity one layer at a time
+- Test each layer before adding the next
+- Use concrete examples to validate functionality
+
+### When Refactoring Existing Code
+- **Make one change at a time**
+- Test after each modification
+- Ensure the change doesn't break existing functionality
+- Verify the refactored code works as expected
+
+### When Integrating Systems
+- **Test each system independently first**
+- Create a simple integration test
+- Add complexity gradually
+- Validate the complete integration works
+
+## Key Behaviors
+
+### ✅ DO:
+- Stay systematic - follow logical progression
+- Build incrementally - one working piece at a time
+- Verify constantly - test after every significant change
+- Use concrete evidence - test results and metrics over assumptions
+- Document progress - keep track of what's been implemented and tested
+- Fail fast - identify issues early through constant verification
+
+### ❌ DON'T:
+- Jump between solutions without completing current work
+- Add multiple features simultaneously without testing
+- Skip verification steps to "save time"
+- Build large components without incremental testing
+- Assume integration will work without testing
+- Continue building on broken foundations
+
+## Success Indicators
+
+- Each increment works independently
+- Integration points are tested and verified
+- The complete solution meets all requirements
+- Performance and edge cases are validated
+- Code is maintainable and well-documented
+- Development process is reproducible and systematic
+
+## Example Workflow
+
+1. **Implement core data structure** → test independently
+2. **Add basic functionality** → verify it works with core structure  
+3. **Add error handling** → test error scenarios
+4. **Integrate with external systems** → test integration points
+5. **Add advanced features** → verify they work with existing code
+6. **Optimize and finalize** → test complete solution
+
+**Remember: Each step should result in a working system, even if incomplete. Never build on broken foundations.**

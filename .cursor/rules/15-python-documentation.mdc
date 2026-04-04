@@ -1,0 +1,401 @@
+---
+id: python_documentation
+description: "Python documentation standards using docstrings and type hints for better code maintainability"
+---
+
+# Python Documentation and Type Hints
+
+Python documentation standards using docstrings and type hints for better code maintainability.
+
+## Docstring Standards
+
+### Google-Style Docstrings
+Use Google-style docstrings for all public functions, classes, and modules:
+
+```python
+def process_user_data(user_id: int, include_metadata: bool = False) -> dict:
+    """Process user data and return formatted result.
+
+    This function retrieves user data from the database, processes it
+    according to business rules, and returns a standardized format.
+
+    Args:
+        user_id: The unique identifier for the user
+        include_metadata: Whether to include additional metadata in the result
+
+    Returns:
+        Dictionary containing processed user data with the following structure:
+        {
+            'id': int,
+            'name': str,
+            'email': str,
+            'metadata': dict (optional)
+        }
+
+    Raises:
+        ValidationError: If user_id is invalid or not found
+        APIError: If external API call fails
+        DatabaseError: If database query fails
+
+    Example:
+        >>> data = process_user_data(123, include_metadata=True)
+        >>> print(data['name'])
+        'John Doe'
+        >>> print('metadata' in data)
+        True
+    """
+    pass
+```
+
+### Class Documentation
+```python
+class UserManager:
+    """Manages user operations including CRUD and authentication.
+    
+    This class provides a high-level interface for user management
+    operations, handling database interactions, validation, and
+    business logic.
+    
+    Attributes:
+        database: Database connection instance
+        cache_enabled: Whether caching is enabled for operations
+        default_permissions: Default permissions for new users
+    
+    Example:
+        >>> manager = UserManager(database=db, cache_enabled=True)
+        >>> user = manager.create_user('john@example.com', 'password')
+        >>> manager.activate_user(user.id)
+    """
+    
+    def __init__(self, database, cache_enabled: bool = True):
+        """Initialize UserManager with database connection.
+        
+        Args:
+            database: Database connection instance
+            cache_enabled: Whether to enable caching for operations
+        """
+        self.database = database
+        self.cache_enabled = cache_enabled
+        self.default_permissions = ['read']
+    
+    def create_user(self, email: str, password: str) -> User:
+        """Create a new user account.
+        
+        Args:
+            email: User's email address (must be valid format)
+            password: User's password (must meet security requirements)
+            
+        Returns:
+            User instance for the newly created user
+            
+        Raises:
+            ValidationError: If email format is invalid or password is weak
+            DatabaseError: If user creation fails
+        """
+        pass
+```
+
+### Module Documentation
+```python
+"""User management utilities and classes.
+
+This module provides comprehensive user management functionality including
+user creation, authentication, permissions, and profile management.
+
+Classes:
+    UserManager: Main interface for user operations
+    User: User data model with validation
+    UserPermissions: Permission management for users
+
+Functions:
+    validate_email: Email format validation
+    hash_password: Secure password hashing
+    generate_token: Authentication token generation
+
+Example:
+    >>> from user_management import UserManager
+    >>> manager = UserManager(database=db)
+    >>> user = manager.create_user('john@example.com', 'secure_password')
+"""
+```
+
+## Type Hints Best Practices
+
+### Basic Type Annotations
+```python
+from typing import List, Dict, Optional, Union, Any, Tuple
+from pathlib import Path
+
+# Basic types
+def calculate_total(prices: List[float]) -> float:
+    """Calculate total of all prices."""
+    return sum(prices)
+
+def get_user_data(user_id: int) -> Dict[str, Any]:
+    """Get user data as dictionary."""
+    pass
+
+def find_user(email: str) -> Optional[User]:
+    """Find user by email, return None if not found."""
+    pass
+
+# Union types for multiple possibilities
+def process_data(value: Union[str, int, float]) -> str:
+    """Process data that can be string, int, or float."""
+    return str(value)
+
+# Modern Python 3.10+ union syntax
+def process_data_modern(value: str | int | float) -> str:
+    """Process data using modern union syntax."""
+    return str(value)
+```
+
+### Complex Type Annotations
+```python
+from typing import Dict, List, Optional, Callable, TypeVar, Generic
+from dataclasses import dataclass
+from enum import Enum
+
+# Type variables for generic functions
+T = TypeVar('T')
+K = TypeVar('K')
+V = TypeVar('V')
+
+def get_first_item(items: List[T]) -> Optional[T]:
+    """Get first item from list or None if empty."""
+    return items[0] if items else None
+
+# Callable type hints
+def apply_filter(
+    items: List[T], 
+    filter_func: Callable[[T], bool]
+) -> List[T]:
+    """Apply filter function to list of items."""
+    return [item for item in items if filter_func(item)]
+
+# Complex nested structures
+UserData = Dict[str, Union[str, int, List[str]]]
+ApiResponse = Dict[str, Union[str, int, List[UserData]]]
+
+def process_api_response(response: ApiResponse) -> List[UserData]:
+    """Process API response and extract user data."""
+    pass
+```
+
+### Using dataclasses with Type Hints
+```python
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import List, Optional
+
+@dataclass
+class User:
+    """User data model with validation.
+    
+    Attributes:
+        id: Unique user identifier
+        email: User's email address
+        name: User's full name
+        created_at: Account creation timestamp
+        permissions: List of user permissions
+        metadata: Additional user metadata
+    """
+    id: int
+    email: str
+    name: str
+    created_at: datetime = field(default_factory=datetime.now)
+    permissions: List[str] = field(default_factory=list)
+    metadata: Optional[Dict[str, Any]] = None
+    
+    def __post_init__(self):
+        """Validate user data after initialization."""
+        if not self.email or '@' not in self.email:
+            raise ValidationError("Invalid email format")
+        
+        if not self.name.strip():
+            raise ValidationError("Name cannot be empty")
+
+@dataclass
+class UserPreferences:
+    """User preference settings."""
+    theme: str = "light"
+    language: str = "en"
+    notifications_enabled: bool = True
+    email_frequency: str = "daily"
+```
+
+### Protocol and Abstract Base Classes
+```python
+from typing import Protocol
+from abc import ABC, abstractmethod
+
+class Serializable(Protocol):
+    """Protocol for objects that can be serialized."""
+    
+    def serialize(self) -> Dict[str, Any]:
+        """Serialize object to dictionary."""
+        ...
+    
+    @classmethod
+    def deserialize(cls, data: Dict[str, Any]) -> 'Serializable':
+        """Create object from dictionary data."""
+        ...
+
+class DataProcessor(ABC):
+    """Abstract base class for data processors."""
+    
+    @abstractmethod
+    def process(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Process data and return result."""
+        pass
+    
+    def validate_input(self, data: Dict[str, Any]) -> bool:
+        """Validate input data format."""
+        return isinstance(data, dict) and len(data) > 0
+```
+
+## Documentation Best Practices
+
+### Function Documentation Guidelines
+```python
+def analyze_user_behavior(
+    user_id: int,
+    start_date: datetime,
+    end_date: datetime,
+    include_sessions: bool = True,
+    metrics: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    """Analyze user behavior patterns within a date range.
+    
+    Processes user activity data to identify patterns, trends, and insights
+    about user engagement and behavior. Optionally includes session data
+    and specific metrics.
+    
+    Args:
+        user_id: Unique identifier for the user to analyze
+        start_date: Beginning of the analysis period (inclusive)
+        end_date: End of the analysis period (inclusive)
+        include_sessions: Whether to include detailed session data in analysis
+        metrics: Specific metrics to calculate. If None, calculates all
+                available metrics. Available options: ['engagement', 'retention',
+                'conversion', 'activity_score']
+    
+    Returns:
+        Analysis results containing:
+        - 'summary': Dict with high-level statistics
+        - 'trends': List of identified behavioral trends
+        - 'sessions': List of session data (if include_sessions=True)
+        - 'metrics': Dict of calculated metrics
+        - 'period': Analysis period information
+    
+    Raises:
+        ValidationError: If user_id is invalid or dates are malformed
+        DataNotFoundError: If no data exists for the specified period
+        CalculationError: If metric calculations fail
+    
+    Example:
+        >>> from datetime import datetime
+        >>> start = datetime(2024, 1, 1)
+        >>> end = datetime(2024, 1, 31)
+        >>> result = analyze_user_behavior(
+        ...     user_id=123,
+        ...     start_date=start,
+        ...     end_date=end,
+        ...     metrics=['engagement', 'retention']
+        ... )
+        >>> print(result['summary']['total_sessions'])
+        45
+    """
+    pass
+```
+
+### Error Documentation
+```python
+class ValidationError(Exception):
+    """Raised when data validation fails.
+    
+    This exception is raised when input data doesn't meet the required
+    format, constraints, or business rules.
+    
+    Attributes:
+        message: Human-readable error description
+        field: The field that failed validation (optional)
+        value: The invalid value that caused the error (optional)
+        error_code: Machine-readable error code for API responses
+    
+    Example:
+        >>> raise ValidationError(
+        ...     "Email must contain @ symbol",
+        ...     field="email",
+        ...     value="invalid-email",
+        ...     error_code="INVALID_EMAIL_FORMAT"
+        ... )
+    """
+    
+    def __init__(
+        self,
+        message: str,
+        field: Optional[str] = None,
+        value: Any = None,
+        error_code: Optional[str] = None
+    ):
+        self.field = field
+        self.value = value
+        self.error_code = error_code
+        super().__init__(message)
+```
+
+## Tools and Configuration
+
+### mypy Configuration
+```ini
+# mypy.ini
+[mypy]
+python_version = 3.9
+warn_return_any = True
+warn_unused_configs = True
+disallow_untyped_defs = True
+disallow_incomplete_defs = True
+check_untyped_defs = True
+disallow_untyped_decorators = True
+
+# Per-module options
+[mypy-requests.*]
+ignore_missing_imports = True
+
+[mypy-pandas.*]
+ignore_missing_imports = True
+```
+
+### Type Checking Commands
+```bash
+# Run type checking
+mypy src/
+
+# Type check specific files
+mypy src/user_management.py src/api_client.py
+
+# Generate type coverage report
+mypy --html-report mypy-report src/
+```
+
+## Best Practices
+
+### ✅ DO:
+- **Document all public APIs** with comprehensive docstrings
+- **Use type hints consistently** across your codebase
+- **Include usage examples** in docstrings for complex functions
+- **Document exceptions** that functions can raise
+- **Keep docstrings up to date** when changing function behavior
+- **Use meaningful parameter names** that are self-documenting
+- **Document complex algorithms** and business logic
+
+### ❌ DON'T:
+- **Document obvious code** - let well-named functions speak for themselves
+- **Copy docstrings** between similar functions without customization
+- **Use vague type hints** like `Any` when more specific types are available
+- **Ignore type checking warnings** - they often reveal real issues
+- **Over-document simple functions** - focus on complex or public APIs
+- **Use outdated docstring formats** - stick to Google or NumPy style consistently
+
+**Remember: Good documentation and type hints make your code self-explaining and help prevent bugs before they happen.**

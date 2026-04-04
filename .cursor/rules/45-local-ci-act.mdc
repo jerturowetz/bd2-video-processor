@@ -1,0 +1,86 @@
+---
+id: local_ci_act
+description: "Standards for running GitHub Actions locally with act to catch CI failures before pushing"
+---
+
+# Local CI Testing with act
+
+Use [`act`](https://github.com/nektos/act) to run GitHub Actions workflows locally in Docker containers. Catch CI failures before pushing and avoid burning Actions minutes.
+
+## Prerequisites
+
+- Docker Desktop (or compatible runtime like Colima) running
+- `act` installed: `brew install act`
+
+## Project Setup
+
+### `.actrc` (commit this)
+
+Create `.actrc` in the project root with default flags:
+
+```
+-P ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-24.04
+--container-architecture linux/amd64
+```
+
+- Use `catthehacker/ubuntu:act-*` images — purpose-built for act, much smaller than official runner images
+- `--container-architecture linux/amd64` is required on Apple Silicon Macs
+- Available tags: `act-22.04`, `act-24.04`. Use `full-*` variants only if `act-*` is missing tools your workflow needs
+
+### Makefile Target (recommended)
+
+Wrap `act` invocations so the team has a single command:
+
+```makefile
+test-ci:
+	@command -v act >/dev/null 2>&1 || { echo "act not installed. Run: brew install act"; exit 1; }
+	act pull_request -W .github/workflows/ci.yml \
+		--secret TOKEN_A="$$TOKEN_A" \
+		--secret TOKEN_B="$$TOKEN_B"
+```
+
+The `$$` escaping passes shell variables through Make's parser. Secrets come from direnv-loaded env vars — never from committed files.
+
+## ✅ DO
+
+**Secrets Handling**
+- Pass secrets from env vars via `--secret` flags — never store in committed files
+- Use `--secret` for `${{ secrets.X }}` references; use `--env` for `${{ env.X }}` references
+- Add `.env`, `.secrets` to `.gitignore`
+- For `GITHUB_TOKEN`, pass manually: `--secret GITHUB_TOKEN="$(gh auth token)"`
+
+**Workflow Compatibility**
+- Pin actions by SHA, not tag: `uses: actions/checkout@<sha> # v4.3.1`
+- Use `if: ${{ !env.ACT }}` to skip steps that won't work locally (artifact uploads, PR comments, caching)
+- Keep secrets generic — map repo-specific secret names to generic env vars in the workflow's `env:` block
+
+**Running Workflows**
+- Use `act <event> -n` for dry runs before real runs
+- Use `act <event> -W .github/workflows/<file>.yml` to target specific workflows
+- Use `act <event> -j <job>` to run a single job
+- Use `act workflow_dispatch --input action=plan` to pass dispatch inputs
+
+## ❌ DON'T
+
+- Don't use `ubuntu-latest=ubuntu:24.04` images — missing runner tooling
+- Don't use deprecated `nektos/act-environments-ubuntu:18.04` images
+- Don't expect `actions/cache`, service containers, or `workflow_run` events to work
+- Don't store secrets in `.actrc` or any committed file
+
+## Troubleshooting
+
+- **Image not found / slow first run**: First pull is ~1.2GB, one-time cost. Ensure Docker is running.
+- **exec format error (Apple Silicon)**: Add `--container-architecture linux/amd64` to `.actrc`
+- **Fails in act but works on GitHub**: Check for GitHub API dependencies, unsupported features, or missing tools in `act-*` images
+- **Permission denied on scripts**: Add `chmod +x` before running or use `bash script.sh`
+- **Secrets not available**: Confirm `--secret` (not `--env`) for `${{ secrets.X }}` references
+- **Auth errors**: Run `direnv allow` to reload env vars
+
+## Debugging
+
+```bash
+act pull_request -v          # verbose output
+act pull_request -v -v       # very verbose (Docker commands)
+act pull_request --reuse     # keep containers after failure for inspection
+docker exec -it <id> bash    # shell into container
+```

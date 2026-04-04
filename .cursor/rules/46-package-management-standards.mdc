@@ -1,0 +1,100 @@
+---
+id: package_management_standards
+description: "Standards for managing packages across different language ecosystems and keeping environments clean"
+---
+
+# Package Management Standards
+
+Maintain clean, reproducible environments across different programming languages and package managers while avoiding dependency conflicts.
+
+## ✅ DO
+
+**Language Managers**
+- Use version managers for each language: `pyenv` (Python), `nvm` (Node.js), `rbenv` (Ruby)
+- Install language versions as needed per project, not globally
+- Document required language versions in project files (`.python-version`, `.nvmrc`)
+- Keep system package managers (Homebrew) separate from language package managers
+
+**Virtual Environments**
+- Use virtual environments for all Python projects (`venv`, `virtualenv`, or `poetry`)
+- Use project-local `node_modules` for Node.js projects
+- Isolate dependencies per project to avoid conflicts
+- Document environment setup steps in project README files
+
+**Dependency Management**
+- Pin dependency versions in lock files (`requirements.txt`, `package-lock.json`, `composer.lock`)
+- Separate development dependencies from production dependencies
+- Keep dependency lists minimal - only include what's actually needed
+- Regularly audit and update dependencies for security
+
+**Homebrew Essentials**
+- Use Homebrew for system tools and utilities, not programming language runtimes
+- Keep a `Brewfile` for essential system packages
+- Document purpose of each Homebrew package
+- Regular cleanup with `brew cleanup` and `brew autoremove`
+
+## ❌ DON'T
+
+**Avoid Global Pollution**
+- Don't install language packages globally unless absolutely necessary
+- Don't mix system packages with language-specific packages
+- Don't let package managers install to system directories without explicit permission
+- Don't ignore lock files or commit history of dependency changes
+
+**Common Mistakes**
+- Don't use `sudo` for language package installations
+- Don't install different versions of the same package globally
+- Don't skip virtual environments "for quick scripts"
+- Don't commit `node_modules/` or other dependency directories to version control
+
+**Version Management**
+- Don't rely on system-installed language versions for development
+- Don't skip documenting version requirements
+- Don't assume other developers have the same versions installed
+- Don't mix global and local package installations carelessly
+
+## Package Manager Best Practices
+
+**Python (pip/pipenv/poetry)**
+```bash
+# Use virtual environments
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# Or use poetry
+poetry install
+poetry shell
+```
+
+**Node.js (npm/yarn)**
+```bash
+# Use exact versions
+nvm use  # reads from .nvmrc
+npm install --exact
+npm ci   # for production/CI builds
+```
+
+**Homebrew (system tools)**
+```bash
+# Essential tools only
+brew install git gh direnv age
+brew bundle  # from Brewfile
+brew cleanup
+```
+
+## Environment Reproducibility
+
+**Documentation Requirements**
+- Document all required versions in project files
+- Include setup instructions in README.md
+- List any global dependencies that must be installed
+- Provide troubleshooting steps for common environment issues
+
+**CI/CD Integration**
+- Use same package manager commands in CI as locally
+- Pin versions in CI environments
+- Cache dependencies appropriately
+- Test with clean environments regularly
+
+This approach ensures consistent, reproducible development environments while keeping system and project dependencies properly isolated.

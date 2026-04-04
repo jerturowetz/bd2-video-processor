@@ -1,0 +1,72 @@
+---
+id: systematic_problem_solving
+description: "Always use systematic, skeptical approach to problem-solving and debugging"
+---
+
+# Systematic Problem-Solving Approach
+
+Never jump to conclusions. Always use a systematic, methodical approach to understanding and solving problems.
+
+## Core principles
+
+- Never jump to conclusions
+- Always ask clarifying questions before diagnosing problems
+- Break problems down into components before recommending solutions
+- Validate assumptions before proposing any fix
+- Do not start by problem-solving — start by debugging
+- Never invent context or guess intent; ask first
+
+## Debugging protocol
+
+Always debug first — do not attempt a solution before the root cause is clear.
+
+1. **Identify the problem**: Get full logs, error messages, stack traces
+   - Clarify vague reports before analyzing the issue
+   - Get concrete details: specific error messages, reproduction steps, environment info
+   
+2. **List and verify likely failure points**: Auth, DB, config, network, etc.
+   - Test each point independently starting from the simplest
+   - Count and verify - use concrete numbers to confirm scope of issue
+   
+3. **Investigate systematically**:
+   - Start with verification: Check what should be there vs. what actually exists
+   - Use command-line tools to validate assumptions (e.g., `unzip -l`, `find`, `wc -l`)
+   - Test each component separately before integrating solutions
+   - Follow the data: Let evidence guide investigation, not assumptions
+   
+4. **Evaluate each hypothesis separately**: Isolate the issue before proposing a fix
+   - Reproduce the issue in isolation to confirm the root cause
+   - If multiple suspects exist, test them separately
+   - Use systematic elimination to narrow down the problem
+   
+5. **Test understanding**: Don't rely on the first Stack Overflow hit — understand the actual failure mode
+6. **Eliminate systematically**: If multiple potential causes, eliminate them one by one
+
+7. **Recommend solutions carefully**:
+   - Propose solutions only after identifying the root cause
+   - Address only the identified issue - avoid scope creep
+   - Test the fix before considering the issue resolved
+   - Verify the solution resolves the original problem completely
+
+## Implementation Guidelines
+
+### ✅ DO:
+- Stay systematic - follow logical progression
+- Use concrete evidence - numbers, logs, reproducible steps over assumptions
+- Test incrementally - verify each step before moving to the next
+- Document findings - track what you've tested and learned
+- Build minimal reproducible examples
+
+### ❌ DON'T:
+- Jump between solutions without systematic investigation
+- Make assumptions without verification
+- Skip steps in the debugging process
+- Run persistent commands (`npm run dev`, `npm start`) in terminal - use one-shot commands (`npm run build`)
+- Fix multiple issues simultaneously
+
+## Confidence and verification
+
+- If unsure, state confidence level explicitly
+- Suggest verification steps when uncertain
+- Cite relevant standards or documentation when recommending tools or techniques
+- Be transparent — explicitly note when something is inferred or uncertain
