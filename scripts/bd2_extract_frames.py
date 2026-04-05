@@ -19,38 +19,13 @@ class VideoSelection:
     reason: str
 
 
-def find_default_video(search_dir: Path) -> VideoSelection:
-    candidates: list[Path] = []
-    for ext in VIDEO_EXTENSIONS:
-        candidates.extend(search_dir.glob(f"*{ext}"))
-
-    if not candidates:
-        raise FileNotFoundError(
-            "No video files found. Provide a path or place an .mp4/.webm/.mkv/.mov in inputs/."
-        )
-
-    def score(path: Path) -> tuple[int, int]:
-        ext_rank = VIDEO_EXTENSIONS.index(path.suffix.lower())
-        size_rank = -path.stat().st_size
-        return (ext_rank, size_rank)
-
-    selected = sorted(candidates, key=score)[0]
-    reason = "preferred .mp4 format" if selected.suffix.lower() == ".mp4" else "best available format"
-    return VideoSelection(path=selected, reason=reason)
-
 
 def require_tool(tool_name: str) -> None:
     if shutil.which(tool_name) is None:
         raise RuntimeError(f"Missing required tool: {tool_name}. Install it and try again.")
 
 
-def run_ffmpeg(command: list[str], show_progress: bool = False) -> None:
-    if not show_progress:
-        try:
-            subprocess.run(command, check=True)
-        except subprocess.CalledProcessError as exc:
-            raise RuntimeError(f"ffmpeg failed with exit code {exc.returncode}") from exc
-        return
+def run_ffmpeg(command: list[str]) -> None:
 
     try:
         process = subprocess.Popen(
@@ -108,8 +83,9 @@ def choose_video_file(search_dir: Path) -> Path:
         candidates.extend(search_dir.glob(f"*{ext}"))
     candidates = sorted(candidates)
     if not candidates:
-        selection = find_default_video(search_dir)
-        return selection.path.resolve()
+        raise FileNotFoundError(
+            "No video files found. Provide a path or place an .mp4/.webm/.mkv/.mov in inputs/."
+        )
 
     print("Select a video from inputs/:")
     for idx, path in enumerate(candidates, start=1):
@@ -141,7 +117,6 @@ def build_ffmpeg_command(
     start: float | None,
     end: float | None,
     limit: int | None,
-    show_progress: bool,
 ) -> list[str]:
     cmd = [
         "ffmpeg",
@@ -149,14 +124,13 @@ def build_ffmpeg_command(
         "-loglevel",
         "error",
     ]
-    if show_progress:
-        cmd.extend(
-            [
-                "-progress",
-                "pipe:1",
-                "-nostats",
-            ]
-        )
+    cmd.extend(
+        [
+            "-progress",
+            "pipe:1",
+            "-nostats",
+        ]
+    )
     cmd.extend(
         [
         "-i",
@@ -202,7 +176,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "video",
         nargs="?",
-        help="Path to input video (defaults to best local file in current directory).",
+        help="Path to input video (defaults to a selection from inputs/).",
     )
     parser.add_argument(
         "--input-dir",
@@ -259,9 +233,8 @@ def main() -> int:
         start=args.start,
         end=args.end,
         limit=args.limit,
-        show_progress=True,
     )
-    run_ffmpeg(command, show_progress=True)
+    run_ffmpeg(command)
 
     frame_count = write_index_csv(
         output_dir=output_dir,

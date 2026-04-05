@@ -32,8 +32,12 @@ DEFAULT_REGION_EXPAND_VERTICAL = 0.005
 DEFAULT_LOG_EVERY = 10
 FOUND_FRAMES_DIR = "found_frames"
 CACHE_ROOT = Path(".cache")
-FRAMES_DIR = CACHE_ROOT / "frames"
 OUTPUT_ROOT = Path("outputs")
+DEFAULT_RESUME_BACK = 5
+TURN_CONFIRM_FRAMES = 2
+TURN_MAX_BACK = 4
+TURN_STEP = 2
+DETECTION_LOGIC_VERSION = "turn-confirm-v1"
 
 try:
     from rich.console import Console
@@ -169,6 +173,105 @@ def build_frame_index_map(frames_csv_path: Path) -> dict[int, Path]:
         for row in reader:
             mapping[int(row["frame_index"])] = frames_csv_path.parent / row["filename"]
     return mapping
+
+
+def load_existing_detections(path: Path) -> list[dict[str, Any]]:
+    """Load JSONL detections, ignoring malformed trailing lines."""
+    if not path.exists():
+        return []
+    detections: list[dict[str, Any]] = []
+    with path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                detections.append(json.loads(line))
+            except json.JSONDecodeError:
+                break
+    return detections
+
+
+def rebuild_state_from_detections(
+    detections: list[dict[str, Any]],
+) -> tuple[int | None, float | None, int | None, list[tuple[int, float, int]]]:
+    """Rebuild boundary state from prior detections using confirmation rules."""
+    current_turn: int | None = None
+    last_seen_ts: float | None = None
+    last_seen_frame: int | None = None
+    boundaries_rows: list[tuple[int, float, int]] = []
+    pending_turn: int | None = None
+    pending_count = 0
+
+    for result in detections:
+        turn_number = result.get("turn_number")
+        current_turn, last_seen_ts, last_seen_frame, pending_turn, pending_count = update_turn_state(
+            current_turn=current_turn,
+            last_seen_ts=last_seen_ts,
+            last_seen_frame=last_seen_frame,
+            pending_turn=pending_turn,
+            pending_count=pending_count,
+            turn_number=turn_number,
+            timestamp=float(result["timestamp"]),
+            frame_index=int(result["frame_index"]),
+            boundaries_rows=boundaries_rows,
+        )
+
+    return current_turn, last_seen_ts, last_seen_frame, boundaries_rows
+
+
+def has_turn_label(text: str) -> bool:
+    """Return True when OCR text includes a turn label."""
+    return "turn" in text.lower()
+
+
+def allowed_turn_candidates(current_turn: int) -> set[int]:
+    """Return valid turn numbers relative to current turn."""
+    candidates = {
+        current_turn,
+        current_turn + TURN_STEP,
+        current_turn - TURN_STEP,
+        current_turn - TURN_MAX_BACK,
+    }
+    return {value for value in candidates if value > 0}
+
+
+def update_turn_state(
+    *,
+    current_turn: int | None,
+    last_seen_ts: float | None,
+    last_seen_frame: int | None,
+    pending_turn: int | None,
+    pending_count: int,
+    turn_number: int | None,
+    timestamp: float,
+    frame_index: int,
+    boundaries_rows: list[tuple[int, float, int]],
+) -> tuple[int | None, float | None, int | None, int | None, int]:
+    """Update turn boundary state with confirmation and rollback constraints."""
+    if turn_number is None:
+        return current_turn, last_seen_ts, last_seen_frame, pending_turn, pending_count
+
+    if current_turn is None:
+        return turn_number, timestamp, frame_index, None, 0
+
+    if turn_number == current_turn:
+        return current_turn, timestamp, frame_index, None, 0
+
+    if turn_number not in allowed_turn_candidates(current_turn):
+        return current_turn, last_seen_ts, last_seen_frame, None, 0
+
+    if pending_turn == turn_number:
+        pending_count += 1
+    else:
+        pending_turn = turn_number
+        pending_count = 1
+
+    if pending_count >= TURN_CONFIRM_FRAMES and last_seen_ts is not None and last_seen_frame is not None:
+        boundaries_rows.append((current_turn, last_seen_ts, last_seen_frame))
+        return turn_number, timestamp, frame_index, None, 0
+
+    return current_turn, last_seen_ts, last_seen_frame, pending_turn, pending_count
 
 
 def copy_boundary_frames(
@@ -318,11 +421,11 @@ def extract_text(response: dict[str, Any]) -> str:
 
 
 def parse_turn_number(text: str) -> int | None:
-    """Parse first integer found in OCR text."""
-    matches = re.findall(r"\d+", text)
-    if not matches:
+    """Parse the number following the 'turn' label from OCR text."""
+    match = re.search(r"\bturn\b\D+(\d+)", text, re.IGNORECASE)
+    if not match:
         return None
-    return int(matches[0])
+    return int(match.group(1))
 
 
 def parse_region_json(text: str) -> Region | None:
@@ -472,8 +575,8 @@ def iter_frames(csv_path: Path) -> Iterable[FrameInfo]:
             )
 
 
-def resolve_default_frames_csv() -> Path:
-    """Find or prompt for frames.csv under .cache/frames."""
+def resolve_frames_csv_interactive() -> Path:
+    """Prompt to select frames.csv under .cache/frames."""
     candidates = list(Path(".cache/frames").glob("**/frames.csv"))
     if not candidates:
         raise FileNotFoundError("No frames.csv found under .cache/frames. Run bd2_extract_frames.py first.")
@@ -492,6 +595,24 @@ def resolve_default_frames_csv() -> Path:
     if index < 1 or index > len(candidates):
         raise RuntimeError("Selection out of range.")
     return candidates[index - 1]
+
+
+def resolve_frames_csv_for_video(video_id: str) -> Path:
+    """Resolve frames.csv path for a given video id."""
+    candidates = list(Path(".cache/frames").glob(f"{video_id}-*/frames.csv"))
+    if not candidates:
+        raise FileNotFoundError(
+            f"No frames.csv found for video id '{video_id}'. Run bd2_extract_frames.py first."
+        )
+    candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    if len(candidates) == 1:
+        return candidates[0]
+    choices = "\n".join(f"- {path.parent}" for path in candidates)
+    raise RuntimeError(
+        "Multiple frames.csv candidates found for this video id. "
+        "Pass --frames-csv explicitly:\n"
+        f"{choices}"
+    )
 
 
 
@@ -519,7 +640,17 @@ def run(
     frames_csv: str | None = typer.Option(
         None,
         "--frames-csv",
-        help="Path to frames.csv (defaults to most recent under .cache/frames).",
+        help="Path to frames.csv (overrides --video-id lookup).",
+    ),
+    video_id: str = typer.Option(
+        ...,
+        "--video-id",
+        help="YouTube video id used to resolve frames.csv (required unless --frames-csv is provided).",
+    ),
+    interactive: bool = typer.Option(
+        False,
+        "--interactive",
+        help="Allow interactive selection when no frames.csv is provided.",
     ),
     use_cache: bool = typer.Option(
         False,
@@ -557,14 +688,19 @@ def run(
     """CLI entrypoint: discover region then run OCR and boundaries.
 
     Main OCR pass sends the padded, region-cropped images for analysis.
+    Existing detections resume with a small rollback to avoid partial lines.
     """
     reset_cache_root(use_cache)
     if not use_cache and frames_csv is None:
         raise RuntimeError("Cache cleared. Run bd2_extract_frames.py first or pass --use-cache.")
-    frames_csv_path = Path(frames_csv) if frames_csv else resolve_default_frames_csv()
-    cache_dir = frames_csv_path.parent
+    if frames_csv:
+        frames_csv_path = Path(frames_csv)
+    elif interactive:
+        frames_csv_path = resolve_frames_csv_interactive()
+    else:
+        frames_csv_path = resolve_frames_csv_for_video(video_id)
     frames_hash = compute_file_hash(frames_csv_path)
-    output_dir = OUTPUT_ROOT / frames_hash
+    output_dir = OUTPUT_ROOT / frames_csv_path.parent.name
     detections_path = Path(detections)
     boundaries_path = Path(boundaries)
     if detections_path == Path(DEFAULT_DETECTIONS):
@@ -579,7 +715,10 @@ def run(
             cached_meta = json.loads(detect_meta_path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             cached_meta = {}
-        cache_ready = cached_meta.get("frames_csv_hash") == frames_hash
+        cache_ready = (
+            cached_meta.get("frames_csv_hash") == frames_hash
+            and cached_meta.get("logic_version") == DETECTION_LOGIC_VERSION
+        )
         if use_cache and not cache_ready:
             typer.echo("Cached detections/boundaries do not match selected frames; re-running OCR.")
     if use_cache and cache_ready:
@@ -660,24 +799,54 @@ def run(
     last_seen_ts: float | None = None
     last_seen_frame: int | None = None
     boundaries_rows: list[tuple[int, float, int]] = []
+    resume_index: int | None = None
+    existing: list[dict[str, Any]] = []
+    if detections_path.exists():
+        existing = load_existing_detections(detections_path)
+        if existing:
+            if len(existing) > DEFAULT_RESUME_BACK:
+                existing = existing[:-DEFAULT_RESUME_BACK]
+            else:
+                existing = []
+            if existing:
+                detections_path.parent.mkdir(parents=True, exist_ok=True)
+                with detections_path.open("w", encoding="utf-8") as handle:
+                    for item in existing:
+                        handle.write(json.dumps(item) + "\n")
+                (
+                    current_turn,
+                    last_seen_ts,
+                    last_seen_frame,
+                    boundaries_rows,
+                ) = rebuild_state_from_detections(existing)
+                resume_index = int(existing[-1]["frame_index"])
+    pending_turn: int | None = None
+    pending_count = 0
 
     total_frames = 0
     for frame in iter_frames(frames_csv_path):
         if frame.index < start_index:
+            continue
+        if resume_index is not None and frame.index <= resume_index:
             continue
         if (frame.index - start_index) % every != 0:
             continue
         total_frames += 1
 
     processed = 0
+    if resume_index is not None:
+        processed = len(existing)
     region_dir_path = Path(region_dir)
     if save_region:
         if region_dir_path.exists():
             shutil.rmtree(region_dir_path)
         region_dir_path.mkdir(parents=True, exist_ok=True)
-    with detections_path.open("w", encoding="utf-8") as handle:
+    file_mode = "a" if processed else "w"
+    with detections_path.open(file_mode, encoding="utf-8") as handle:
         for frame in iter_frames(frames_csv_path):
             if frame.index < start_index:
+                continue
+            if resume_index is not None and frame.index <= resume_index:
                 continue
             if (frame.index - start_index) % every != 0:
                 continue
@@ -691,7 +860,11 @@ def run(
             if preview_only:
                 processed += 1
                 if processed % DEFAULT_LOG_EVERY == 0 or processed == total_frames:
-                    sys.stdout.write(f"\rPreviewed {processed}/{total_frames} frames...")
+                    percent = (processed / total_frames * 100) if total_frames else 0
+                    sys.stdout.write(
+                        f"\rPreviewed {processed}/{total_frames} frames "
+                        f"({percent:.1f}%)..."
+                    )
                     sys.stdout.flush()
                 continue
 
@@ -701,7 +874,11 @@ def run(
             response = vision_text_detect(crop_bytes, token)
             elapsed = time.time() - start_time
             text = extract_text(response)
-            turn_number = parse_turn_number(text)
+            candidate_turn = parse_turn_number(text)
+            if candidate_turn is not None and (has_turn_label(text) or current_turn is None):
+                turn_number = candidate_turn
+            else:
+                turn_number = None
             result = {
                 "frame_index": frame.index,
                 "timestamp": frame.timestamp,
@@ -721,20 +898,25 @@ def run(
 
             handle.write(json.dumps(result) + "\n")
 
-            turn_number = result.get("turn_number")
-            if turn_number is not None:
-                if current_turn is None:
-                    current_turn = turn_number
-                elif turn_number != current_turn and last_seen_ts is not None and last_seen_frame is not None:
-                    boundaries_rows.append((current_turn, last_seen_ts, last_seen_frame))
-                    current_turn = turn_number
-
-                last_seen_ts = float(result["timestamp"])
-                last_seen_frame = int(result["frame_index"])
+            current_turn, last_seen_ts, last_seen_frame, pending_turn, pending_count = update_turn_state(
+                current_turn=current_turn,
+                last_seen_ts=last_seen_ts,
+                last_seen_frame=last_seen_frame,
+                pending_turn=pending_turn,
+                pending_count=pending_count,
+                turn_number=turn_number,
+                timestamp=float(result["timestamp"]),
+                frame_index=int(result["frame_index"]),
+                boundaries_rows=boundaries_rows,
+            )
 
             processed += 1
             if processed % DEFAULT_LOG_EVERY == 0 or processed == total_frames:
-                sys.stdout.write(f"\rProcessed {processed}/{total_frames} frames...")
+                percent = (processed / total_frames * 100) if total_frames else 0
+                sys.stdout.write(
+                    f"\rProcessed {processed}/{total_frames} frames "
+                    f"({percent:.1f}%)..."
+                )
                 sys.stdout.flush()
 
     if current_turn is not None and last_seen_ts is not None and last_seen_frame is not None:
@@ -752,6 +934,7 @@ def run(
             {
                 "frames_csv": str(frames_csv_path),
                 "frames_csv_hash": frames_hash,
+                "logic_version": DETECTION_LOGIC_VERSION,
             },
             indent=2,
         )

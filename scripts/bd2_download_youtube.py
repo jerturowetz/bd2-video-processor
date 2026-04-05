@@ -14,7 +14,7 @@ def require_tool(tool_name: str) -> None:
         raise RuntimeError(f"Missing required tool: {tool_name}. Install it and try again.")
 
 
-def download_youtube_video(url: str, download_dir: Path) -> Path:
+def download_youtube_video(url: str, download_dir: Path) -> None:
     require_tool("yt-dlp")
     download_dir.mkdir(parents=True, exist_ok=True)
     output_template = str(download_dir / "%(id)s.%(ext)s")
@@ -44,7 +44,7 @@ def download_youtube_video(url: str, download_dir: Path) -> Path:
     output_path_file.unlink(missing_ok=True)
     if not output_path.exists():
         raise RuntimeError(f"Downloaded video not found at {output_path}.")
-    return output_path
+    print(output_path)
 
 
 def parse_args() -> argparse.Namespace:
@@ -64,8 +64,7 @@ def main() -> int:
     if not args.youtube_url and not args.video_id:
         raise RuntimeError("Provide --youtube-url or --video-id.")
     url = args.youtube_url or f"https://www.youtube.com/watch?v={args.video_id}"
-    output_path = download_youtube_video(url, Path(args.download_dir))
-    print(output_path)
+    download_youtube_video(url, Path(args.download_dir))
     return 0
 
 
