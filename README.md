@@ -1,4 +1,20 @@
-This project extracts and analyzes frames from **Brown Dust 2** user videos to find the moments around the **Turn** button in the bottom-right UI. The goal is to capture the last frame where a given turn button is visible, which defines the turn boundary and gives precise timestamps.
+This is a small I built to make Brown Dust 2 strategy videos easier to follow while playing.
+
+I got tired of constantly pausing YouTube, switching back to the game, trying to copy a setup, then jumping back to the video to check if I got it right. Doing that over and over just to follow a single strategy felt more tedious than it should be.
+
+So instead, this tool breaks a video into **turn-by-turn snapshots**.
+
+It looks for the **Turn button in the bottom-right corner** to figure out when each turn happens, then saves images around those moments. The result is a simple visual guide you can follow without scrubbing through a video.
+
+### What you get
+- A set of images for each turn  
+- Clear views of party setup and skill choices  
+- A step-by-step flow you can follow at your own pace  
+
+### Why I made it
+I mostly play on my phone, and switching between apps interrupts the flow. I used to take screenshots manually, but that got repetitive. This automates that process so I can focus on playing.
+
+If you like copying clears or testing strategies, this makes it smoother.
 
 ## Purpose
 The pipeline focuses on the bottom-right turn button because it is the most reliable on-screen signal. Mid‑screen turn text is often missing in captured frames, so it is not used.
