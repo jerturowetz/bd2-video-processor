@@ -12,6 +12,20 @@ Start by downloading or placing a video in `inputs/`, then extract frames with `
 If you prefer Make, use the pipeline target. It derives `VIDEO_ID` and `VIDEO_PATH` from `YOUTUBE_URL` to avoid interactive prompts.
 
     make pipeline-youtube YOUTUBE_URL="https://www.youtube.com/watch?v=GViFTckl4fk"
+## Requirements
+You will need a few tools and Python packages available before running the pipeline.
+
+- **ffmpeg:** Required for frame extraction.
+- **yt-dlp:** Required for downloading YouTube videos.
+- **Python 3.10+:** Runtime for the scripts.
+- **Python packages:** `google-auth`, `pillow`, and `typer` are required; `rich` is optional for nicer tables.
+- **Google ADC:** The Vision OCR path requires Application Default Credentials (for example, via `gcloud auth application-default login`).
+
+## Environment variables
+Set these in your shell or direnv when needed.
+
+- **GEMINI_API_KEY / GOOGLE_API_KEY:** Optional. If set, Gemini is used for region discovery instead of Vision OCR.
+- **GEMINI_MODEL:** Optional. Overrides the default Gemini model.
 
 ## Outputs
 Detection results are written under `outputs/<video-id-hash>/`, where the folder name matches the extracted frames directory (e.g., `GViFTckl4fk-<hash>`). You will find:
