@@ -1,3 +1,4 @@
+# Brown Dust 2 Turn Snapshot Extractor
 This is a small I built to make Brown Dust 2 strategy videos easier to follow while playing.
 
 I got tired of constantly pausing YouTube, switching back to the game, trying to copy a setup, then jumping back to the video to check if I got it right. Doing that over and over just to follow a single strategy felt more tedious than it should be.
@@ -16,6 +17,13 @@ I mostly play on my phone, and switching between apps interrupts the flow. I use
 
 If you like copying clears or testing strategies, this makes it smoother.
 
+## Quickstart
+Use Make for a one-command run, or call the scripts directly if you want more control.
+
+- **Make (recommended):** `make pipeline-youtube YOUTUBE_URL="https://www.youtube.com/watch?v=GViFTckl4fk"`.
+- **Extract only:** `python3 scripts/bd2_extract_frames.py inputs/GViFTckl4fk.mp4`.
+- **Detect only:** `python3 scripts/bd2_detect_turns.py --video-id GViFTckl4fk --use-cache`.
+
 ## Purpose
 The pipeline focuses on the bottom-right turn button because it is the most reliable on-screen signal. Mid‑screen turn text is often missing in captured frames, so it is not used.
 
@@ -29,16 +37,18 @@ If you prefer Make, use the pipeline target. It derives `VIDEO_ID` and `VIDEO_PA
 
     make pipeline-youtube YOUTUBE_URL="https://www.youtube.com/watch?v=GViFTckl4fk"
 ## Requirements
-You will need a few tools and Python packages available before running the pipeline.
+You will need a few tools, Python packages, and Google Vision credentials before running the pipeline.
 
 - **ffmpeg:** Required for frame extraction.
 - **yt-dlp:** Required for downloading YouTube videos.
 - **Python 3.10+:** Runtime for the scripts.
 - **Python packages:** `google-auth`, `pillow`, and `typer` are required; `rich` is optional for nicer tables.
-- **Google ADC:** The Vision OCR path requires Application Default Credentials (for example, via `gcloud auth application-default login`).
+- **Google Cloud SDK (gcloud):** Needed to set Application Default Credentials.
+- **Vision API enabled:** Enable Cloud Vision API in your GCP project before running OCR.
+- **Google ADC:** Run `gcloud auth application-default login` for the project with Vision enabled.
 
 ## Environment variables
-Set these in your shell or direnv when needed.
+Set these in your shell or direnv when needed. These only affect region discovery.
 
 - **GEMINI_API_KEY / GOOGLE_API_KEY:** Optional. If set, Gemini is used for region discovery instead of Vision OCR.
 - **GEMINI_MODEL:** Optional. Overrides the default Gemini model.
