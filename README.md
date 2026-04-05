@@ -128,5 +128,3 @@ This tool is especially useful if you:
 ## Not magic
 
 This is a helper tool, not a flawless video-understanding engine. If the UI is obscured, the video is heavily edited, or the turn indicator is missing, detection quality may drop. Still, for normal strategy footage, it saves a lot of repetitive manual checking.
-
-Sources
