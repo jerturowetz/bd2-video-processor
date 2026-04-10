@@ -3,7 +3,7 @@
 .cache/
 .DS_Store
 .envrc
-inputs/*.mp4
+inputs/
 outputs/
 detections.jsonl
 turn_boundaries.csv

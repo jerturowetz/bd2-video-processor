@@ -27,6 +27,7 @@ def download_youtube_video(url: str, download_dir: Path) -> None:
         "bv*+ba/b",
         "--merge-output-format",
         "mp4",
+        "--write-info-json",
         "-o",
         output_template,
         "--print-to-file",

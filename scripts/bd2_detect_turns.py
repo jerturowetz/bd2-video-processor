@@ -33,6 +33,9 @@ DEFAULT_LOG_EVERY = 10
 FOUND_FRAMES_DIR = "found_frames"
 CACHE_ROOT = Path(".cache")
 OUTPUT_ROOT = Path("outputs")
+INPUTS_ROOT = Path("inputs")
+MAX_TITLE_LENGTH = 80
+MAX_CHANNEL_LENGTH = 40
 DEFAULT_RESUME_BACK = 5
 TURN_CONFIRM_FRAMES = 2
 TURN_MAX_BACK = 4
@@ -175,6 +178,57 @@ def build_frame_index_map(frames_csv_path: Path) -> dict[int, Path]:
     return mapping
 
 
+def extract_video_id_from_frames(frames_csv_path: Path) -> str:
+    """Infer the video id from a cached frames directory name."""
+    name = frames_csv_path.parent.name
+    if "-" in name:
+        return name.rsplit("-", 1)[0]
+    return name
+
+
+def sanitize_filename_component(value: str, max_length: int) -> str:
+    """Sanitize text for safe filenames and truncate to max length."""
+    cleaned = []
+    for char in value.strip():
+        if char.isalnum() or char in {" ", "-", "_"}:
+            cleaned.append(char)
+        else:
+            cleaned.append(" ")
+    normalized = " ".join("".join(cleaned).split())
+    if not normalized:
+        return ""
+    return normalized[:max_length].strip()
+
+
+def load_video_metadata(video_id: str) -> dict[str, Any]:
+    """Load yt-dlp metadata for a given video id when available."""
+    info_path = INPUTS_ROOT / f"{video_id}.info.json"
+    if not info_path.exists():
+        return {}
+    try:
+        return json.loads(info_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+
+
+def build_found_frames_prefix(metadata: dict[str, Any]) -> str:
+    """Build the filename prefix from metadata with safe truncation."""
+    channel = metadata.get("channel") or metadata.get("uploader") or metadata.get(
+        "uploader_id"
+    )
+    title = metadata.get("title")
+    channel = sanitize_filename_component(channel or "unknown-channel", MAX_CHANNEL_LENGTH)
+    title = sanitize_filename_component(title or "untitled", MAX_TITLE_LENGTH)
+    if channel and title:
+        return f"{channel} - {title}"
+    return channel or title or "untitled"
+
+
+def build_found_frame_name(prefix: str, frame_path: Path) -> str:
+    """Build the output filename for a found frame."""
+    return f"{prefix} - {frame_path.stem}{frame_path.suffix}"
+
+
 def load_existing_detections(path: Path) -> list[dict[str, Any]]:
     """Load JSONL detections, ignoring malformed trailing lines."""
     if not path.exists():
@@ -279,23 +333,29 @@ def copy_boundary_frames(
     frames_csv_path: Path,
     found_frames_dir: Path,
 ) -> dict[int, tuple[str | None, str | None, str | None]]:
-    """Copy boundary frames plus neighbors to found_frames directory."""
+    """Copy boundary frames plus two previous frames to found_frames directory."""
     if found_frames_dir.exists():
         shutil.rmtree(found_frames_dir)
     found_frames_dir.mkdir(parents=True, exist_ok=True)
     frame_map = build_frame_index_map(frames_csv_path)
+    video_id = extract_video_id_from_frames(frames_csv_path)
+    metadata = load_video_metadata(video_id)
+    prefix = build_found_frames_prefix(metadata)
     summary: dict[int, tuple[str | None, str | None, str | None]] = {}
     for _, _, frame_index in boundaries_rows:
-        prev_path = frame_map.get(frame_index - 1)
+        prev2_path = frame_map.get(frame_index - 2)
+        prev1_path = frame_map.get(frame_index - 1)
         frame_path = frame_map.get(frame_index)
-        next_path = frame_map.get(frame_index + 1)
-        for path in (prev_path, frame_path, next_path):
+        dest_names: dict[Path, str] = {}
+        for path in (prev2_path, prev1_path, frame_path):
             if path and path.exists():
-                shutil.copy2(path, found_frames_dir / path.name)
+                dest_name = build_found_frame_name(prefix, path)
+                dest_names[path] = dest_name
+                shutil.copy2(path, found_frames_dir / dest_name)
         summary[frame_index] = (
-            prev_path.name if prev_path else None,
-            frame_path.name if frame_path else None,
-            next_path.name if next_path else None,
+            dest_names.get(prev2_path) if prev2_path else None,
+            dest_names.get(prev1_path) if prev1_path else None,
+            dest_names.get(frame_path) if frame_path else None,
         )
     return summary
 
@@ -733,18 +793,20 @@ def run(
                 table.add_column("Turn", justify="right")
                 table.add_column("Last Seen", justify="right")
                 table.add_column("Frame", justify="right")
-                table.add_column("Prev", justify="left")
+                table.add_column("Prev-2", justify="left")
+                table.add_column("Prev-1", justify="left")
                 table.add_column("Curr", justify="left")
-                table.add_column("Next", justify="left")
                 for turn_number, timestamp, frame_index in boundaries_rows:
-                    prev_name, curr_name, next_name = frame_files.get(frame_index, (None, None, None))
+                    prev2_name, prev1_name, curr_name = frame_files.get(
+                        frame_index, (None, None, None)
+                    )
                     table.add_row(
                         str(turn_number),
                         f"{timestamp:.1f}s",
                         str(frame_index),
-                        format_found_frame_rich(prev_name, found_frames_dir),
+                        format_found_frame_rich(prev2_name, found_frames_dir),
+                        format_found_frame_rich(prev1_name, found_frames_dir),
                         format_found_frame_rich(curr_name, found_frames_dir),
-                        format_found_frame_rich(next_name, found_frames_dir),
                     )
                 console.print(table)
         else:
@@ -753,10 +815,12 @@ def run(
             if boundaries_rows:
                 typer.echo("Turn boundaries:")
                 for turn_number, timestamp, frame_index in boundaries_rows:
-                    prev_name, curr_name, next_name = frame_files.get(frame_index, (None, None, None))
+                    prev2_name, prev1_name, curr_name = frame_files.get(
+                        frame_index, (None, None, None)
+                    )
                     typer.echo(
                         f"  {turn_number} → {timestamp:.1f}s (frame {frame_index}) "
-                        f"[{format_found_frame(prev_name, found_frames_dir)}, {format_found_frame(curr_name, found_frames_dir)}, {format_found_frame(next_name, found_frames_dir)}]"
+                        f"[{format_found_frame(prev2_name, found_frames_dir)}, {format_found_frame(prev1_name, found_frames_dir)}, {format_found_frame(curr_name, found_frames_dir)}]"
                     )
         return
 
@@ -953,18 +1017,20 @@ def run(
             table.add_column("Turn", justify="right")
             table.add_column("Last Seen", justify="right")
             table.add_column("Frame", justify="right")
-            table.add_column("Prev", justify="left")
+            table.add_column("Prev-2", justify="left")
+            table.add_column("Prev-1", justify="left")
             table.add_column("Curr", justify="left")
-            table.add_column("Next", justify="left")
             for turn_number, timestamp, frame_index in boundaries_rows:
-                prev_name, curr_name, next_name = frame_files.get(frame_index, (None, None, None))
+                prev2_name, prev1_name, curr_name = frame_files.get(
+                    frame_index, (None, None, None)
+                )
                 table.add_row(
                     str(turn_number),
                     f"{timestamp:.1f}s",
                     str(frame_index),
-                    format_found_frame_rich(prev_name, found_frames_dir),
+                    format_found_frame_rich(prev2_name, found_frames_dir),
+                    format_found_frame_rich(prev1_name, found_frames_dir),
                     format_found_frame_rich(curr_name, found_frames_dir),
-                    format_found_frame_rich(next_name, found_frames_dir),
                 )
             console.print(table)
     else:
@@ -973,10 +1039,12 @@ def run(
         if boundaries_rows:
             typer.echo("Turn boundaries:")
             for turn_number, timestamp, frame_index in boundaries_rows:
-                prev_name, curr_name, next_name = frame_files.get(frame_index, (None, None, None))
+                prev2_name, prev1_name, curr_name = frame_files.get(
+                    frame_index, (None, None, None)
+                )
                 typer.echo(
                     f"  {turn_number} → {timestamp:.1f}s (frame {frame_index}) "
-                    f"[{format_found_frame(prev_name, found_frames_dir)}, {format_found_frame(curr_name, found_frames_dir)}, {format_found_frame(next_name, found_frames_dir)}]"
+                    f"[{format_found_frame(prev2_name, found_frames_dir)}, {format_found_frame(prev1_name, found_frames_dir)}, {format_found_frame(curr_name, found_frames_dir)}]"
                 )
 
 
