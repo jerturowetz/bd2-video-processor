@@ -1,4 +1,4 @@
-.PHONY: help download-video extract-frames detect-turns preview-region cache-clear
+.PHONY: help download-video extract-frames detect-turns preview-region cache-clear cache-check
 .PHONY: pipeline-youtube
 .DEFAULT_GOAL := help
 
@@ -27,6 +27,16 @@ help: ## Show this help.
 
 cache-clear: ## Remove all cached data under .cache.
 	rm -rf .cache
+ 
+cache-check: ## Prompt to clear cache if .cache exceeds 4GB.
+	@size_kb=$$(du -sk .cache 2>/dev/null | awk '{print $$1}'); \
+	if [ -z "$$size_kb" ]; then size_kb=0; fi; \
+	if [ "$$size_kb" -ge 4194304 ]; then \
+		echo ".cache is larger than 4GB ($$size_kb KB)."; \
+		printf "Clear cache now? [y/N] "; \
+		read ans; \
+		case "$$ans" in y|Y) rm -rf .cache ;; *) echo "Keeping cache."; esac; \
+	fi
 
 download-video: ## Download YouTube video into inputs/ (set YOUTUBE_URL or VIDEO_ID).
 	@if [ -z "$(YOUTUBE_URL)" ] && [ -z "$(VIDEO_ID)" ]; then \
@@ -45,6 +55,7 @@ detect-turns: ## Run detection on existing frames (set VIDEO_ID or FRAMES_CSV).
 	python3 scripts/bd2_detect_turns.py --use-cache $(if $(FRAMES_CSV),--frames-csv "$(FRAMES_CSV)",) $(if $(VIDEO_ID),--video-id "$(VIDEO_ID)",)
 
 pipeline-youtube: ## Download YouTube video, extract frames, then detect turns.
+	$(MAKE) cache-check
 	$(MAKE) download-video
 	$(MAKE) extract-frames $(if $(VIDEO_PATH),VIDEO_PATH="$(VIDEO_PATH)",)
 	$(MAKE) detect-turns $(if $(VIDEO_ID),VIDEO_ID="$(VIDEO_ID)",)

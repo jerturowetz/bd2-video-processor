@@ -21,6 +21,7 @@ def download_youtube_video(url: str, download_dir: Path) -> None:
     output_path_file = download_dir / f".yt_dlp_output_{uuid4().hex}.txt"
     command = [
         "yt-dlp",
+        "--ignore-config",
         "--progress",
         "--newline",
         "-f",
