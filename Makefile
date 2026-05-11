@@ -8,7 +8,7 @@ YOUTUBE_URL ?=
 
 ifeq ($(VIDEO_ID),)
 ifneq ($(YOUTUBE_URL),)
-VIDEO_ID := $(shell python3 -c "import sys,urllib.parse;u=urllib.parse.urlparse('$(YOUTUBE_URL)');q=urllib.parse.parse_qs(u.query);print(q.get('v',[''])[0])")
+VIDEO_ID := $(shell python3 -c "import sys,urllib.parse;u=urllib.parse.urlparse('$(YOUTUBE_URL)');q=urllib.parse.parse_qs(u.query);vid=q.get('v',[''])[0];print(vid or (u.path.lstrip('/') if u.netloc in ('youtu.be','www.youtu.be') else ''))")
 endif
 endif
 
