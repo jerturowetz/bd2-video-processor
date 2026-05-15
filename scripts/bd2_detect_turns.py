@@ -32,7 +32,7 @@ DEFAULT_REGION_EXPAND_VERTICAL = 0.005
 DEFAULT_LOG_EVERY = 10
 DEFAULT_FOUND_FRAMES_DIR = "extracted-frames"
 CACHE_ROOT = Path(".cache")
-OUTPUT_ROOT = Path("outputs")
+OUTPUT_ROOT = Path.home() / "Desktop" / "BD2" / "_inbox"
 INPUTS_ROOT = Path("inputs")
 MAX_TITLE_LENGTH = 80
 MAX_CHANNEL_LENGTH = 40
@@ -142,6 +142,11 @@ def reset_cache_root(use_cache: bool) -> None:
         return
     if CACHE_ROOT.exists():
         shutil.rmtree(CACHE_ROOT)
+
+
+def ensure_output_roots() -> None:
+    """Ensure output directories exist without altering existing content."""
+    OUTPUT_ROOT.mkdir(parents=True, exist_ok=True)
 
 
 def load_boundaries(path: Path) -> list[tuple[int, float, int]]:
@@ -763,6 +768,7 @@ def run(
     Existing detections resume with a small rollback to avoid partial lines.
     """
     reset_cache_root(use_cache)
+    ensure_output_roots()
     if not use_cache and frames_csv is None:
         raise RuntimeError("Cache cleared. Run bd2_extract_frames.py first or pass --use-cache.")
     if frames_csv:

@@ -96,21 +96,18 @@ These are optional and only affect region discovery:
 
 Detection results are written to:
 
-```text
-outputs/<video-id-hash>/
-```
+    ~/Desktop/BD2/_inbox/<video-id-hash>/
 
 This folder matches the extracted frames directory name, for example:
 
-```text
-GViFTckl4fk-<hash>
-```
+    GViFTckl4fk-<hash>
 
 Inside, you will find:
 
 - **`detections.jsonl`** — per-frame OCR results.
 - **`turn_boundaries.csv`** — detected boundary timestamps.
 - **`extracted-frames/`** — the boundary frame plus nearby snapshots (default output folder).
+
 
 You can override the extracted frames folder with `--found-frames-dir` (absolute or relative to the output dir):
 
