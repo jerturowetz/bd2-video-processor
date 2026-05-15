@@ -1,4 +1,4 @@
-.PHONY: help download-video extract-frames detect-turns preview-region cache-clear cache-check
+.PHONY: help download-video extract-frames detect-turns preview-region cache-clear cache-check inputs-clear
 .PHONY: pipeline-youtube
 .DEFAULT_GOAL := help
 
@@ -27,6 +27,9 @@ help: ## Show this help.
 
 cache-clear: ## Remove all cached data under .cache.
 	rm -rf .cache
+
+inputs-clear: ## Remove all downloaded videos and metadata under inputs.
+	rm -rf inputs
  
 cache-check: ## Prompt to clear cache if .cache exceeds 4GB.
 	@size_kb=$$(du -sk .cache 2>/dev/null | awk '{print $$1}'); \
@@ -36,6 +39,9 @@ cache-check: ## Prompt to clear cache if .cache exceeds 4GB.
 		printf "Clear cache now? [y/N] "; \
 		read ans; \
 		case "$$ans" in y|Y) rm -rf .cache ;; *) echo "Keeping cache."; esac; \
+		printf "Clear inputs folder too? [y/N] "; \
+		read ans_inputs; \
+		case "$$ans_inputs" in y|Y) rm -rf inputs ;; *) echo "Keeping inputs."; esac; \
 	fi
 
 download-video: ## Download YouTube video into inputs/ (set YOUTUBE_URL or VIDEO_ID).
@@ -52,7 +58,7 @@ detect-turns: ## Run detection on existing frames (set VIDEO_ID or FRAMES_CSV).
 	@if ! ls .cache/frames/**/frames.csv >/dev/null 2>&1; then \
 		echo "Warning: no frames found in .cache/frames. Run 'make extract-frames' first."; \
 	fi
-	python3 scripts/bd2_detect_turns.py --use-cache $(if $(FRAMES_CSV),--frames-csv "$(FRAMES_CSV)",) $(if $(VIDEO_ID),--video-id "$(VIDEO_ID)",)
+	python3 scripts/bd2_detect_turns.py --use-cache $(if $(FRAMES_CSV),--frames-csv "$(FRAMES_CSV)",) $(if $(VIDEO_ID),--video-id "$(VIDEO_ID)",) $(if $(FOUND_FRAMES_DIR),--found-frames-dir "$(FOUND_FRAMES_DIR)",)
 
 pipeline-youtube: ## Download YouTube video, extract frames, then detect turns.
 	$(MAKE) cache-check
@@ -61,4 +67,4 @@ pipeline-youtube: ## Download YouTube video, extract frames, then detect turns.
 	$(MAKE) detect-turns $(if $(VIDEO_ID),VIDEO_ID="$(VIDEO_ID)",)
 
 preview-region: ## Save region crops only (no OCR).
-	python3 scripts/bd2_detect_turns.py --use-cache --save-region --preview-only
+	python3 scripts/bd2_detect_turns.py --use-cache --save-region --preview-only $(if $(FOUND_FRAMES_DIR),--found-frames-dir "$(FOUND_FRAMES_DIR)",)

@@ -110,7 +110,19 @@ Inside, you will find:
 
 - **`detections.jsonl`** — per-frame OCR results.
 - **`turn_boundaries.csv`** — detected boundary timestamps.
-- **`found_frames/`** — the boundary frame plus nearby snapshots.
+- **`extracted-frames/`** — the boundary frame plus nearby snapshots (default output folder).
+
+You can override the extracted frames folder with `--found-frames-dir` (absolute or relative to the output dir):
+
+```bash
+python3 scripts/bd2_detect_turns.py --video-id GViFTckl4fk --use-cache --found-frames-dir "/tmp/bd2-frames"
+```
+
+With Make:
+
+```bash
+make detect-turns VIDEO_ID=GViFTckl4fk FOUND_FRAMES_DIR="custom-frames"
+```
 
 ## Purpose
 

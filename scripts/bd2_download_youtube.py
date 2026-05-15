@@ -16,6 +16,7 @@ def require_tool(tool_name: str) -> None:
 
 def download_youtube_video(url: str, download_dir: Path) -> None:
     require_tool("yt-dlp")
+    require_tool("ffmpeg")
     download_dir.mkdir(parents=True, exist_ok=True)
     output_template = str(download_dir / "%(id)s.%(ext)s")
     output_path_file = download_dir / f".yt_dlp_output_{uuid4().hex}.txt"
@@ -25,7 +26,9 @@ def download_youtube_video(url: str, download_dir: Path) -> None:
         "--progress",
         "--newline",
         "-f",
-        "bv*",
+        "bv*+ba/best",
+        "--merge-output-format",
+        "mp4",
         "--write-info-json",
         "-o",
         output_template,

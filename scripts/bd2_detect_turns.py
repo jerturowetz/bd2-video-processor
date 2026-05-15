@@ -30,7 +30,7 @@ DEFAULT_REGION_EXPAND_RIGHT = 0.02
 DEFAULT_REGION_EXPAND_LEFT = 0.005
 DEFAULT_REGION_EXPAND_VERTICAL = 0.005
 DEFAULT_LOG_EVERY = 10
-FOUND_FRAMES_DIR = "found_frames"
+DEFAULT_FOUND_FRAMES_DIR = "extracted-frames"
 CACHE_ROOT = Path(".cache")
 OUTPUT_ROOT = Path("outputs")
 INPUTS_ROOT = Path("inputs")
@@ -41,6 +41,7 @@ TURN_CONFIRM_FRAMES = 2
 TURN_MAX_BACK = 4
 TURN_STEP = 2
 DETECTION_LOGIC_VERSION = "turn-confirm-v1"
+FOUND_FRAME_EPOCH = 946684800.0
 
 try:
     from rich.console import Console
@@ -168,13 +169,18 @@ def compute_file_hash(path: Path) -> str:
     return digest.hexdigest()
 
 
-def build_frame_index_map(frames_csv_path: Path) -> dict[int, Path]:
-    """Map frame_index to frame path."""
-    mapping: dict[int, Path] = {}
+def build_frame_metadata_map(frames_csv_path: Path) -> dict[int, FrameInfo]:
+    """Map frame_index to FrameInfo."""
+    mapping: dict[int, FrameInfo] = {}
     with frames_csv_path.open("r", encoding="utf-8") as handle:
         reader = csv.DictReader(handle)
         for row in reader:
-            mapping[int(row["frame_index"])] = frames_csv_path.parent / row["filename"]
+            frame_info = FrameInfo(
+                index=int(row["frame_index"]),
+                timestamp=float(row["timestamp_seconds"]),
+                path=frames_csv_path.parent / row["filename"],
+            )
+            mapping[frame_info.index] = frame_info
     return mapping
 
 
@@ -334,28 +340,29 @@ def copy_boundary_frames(
     found_frames_dir: Path,
 ) -> dict[int, tuple[str | None, str | None, str | None]]:
     """Copy boundary frames plus two previous frames to found_frames directory."""
-    if found_frames_dir.exists():
-        shutil.rmtree(found_frames_dir)
     found_frames_dir.mkdir(parents=True, exist_ok=True)
-    frame_map = build_frame_index_map(frames_csv_path)
+    frame_map = build_frame_metadata_map(frames_csv_path)
     video_id = extract_video_id_from_frames(frames_csv_path)
     metadata = load_video_metadata(video_id)
     prefix = build_found_frames_prefix(metadata)
     summary: dict[int, tuple[str | None, str | None, str | None]] = {}
     for _, _, frame_index in boundaries_rows:
-        prev2_path = frame_map.get(frame_index - 2)
-        prev1_path = frame_map.get(frame_index - 1)
-        frame_path = frame_map.get(frame_index)
+        prev2_info = frame_map.get(frame_index - 2)
+        prev1_info = frame_map.get(frame_index - 1)
+        frame_info = frame_map.get(frame_index)
         dest_names: dict[Path, str] = {}
-        for path in (prev2_path, prev1_path, frame_path):
-            if path and path.exists():
-                dest_name = build_found_frame_name(prefix, path)
-                dest_names[path] = dest_name
-                shutil.copy2(path, found_frames_dir / dest_name)
+        for info in (prev2_info, prev1_info, frame_info):
+            if info and info.path.exists():
+                dest_name = build_found_frame_name(prefix, info.path)
+                dest_path = found_frames_dir / dest_name
+                dest_names[info.path] = dest_name
+                shutil.copy2(info.path, dest_path)
+                ordered_timestamp = FOUND_FRAME_EPOCH + info.timestamp
+                os.utime(dest_path, (ordered_timestamp, ordered_timestamp))
         summary[frame_index] = (
-            dest_names.get(prev2_path) if prev2_path else None,
-            dest_names.get(prev1_path) if prev1_path else None,
-            dest_names.get(frame_path) if frame_path else None,
+            dest_names.get(prev2_info.path) if prev2_info else None,
+            dest_names.get(prev1_info.path) if prev1_info else None,
+            dest_names.get(frame_info.path) if frame_info else None,
         )
     return summary
 
@@ -739,6 +746,11 @@ def run(
         "--region-dir",
         help="Directory to write saved region crops.",
     ),
+    found_frames_dir: str = typer.Option(
+        DEFAULT_FOUND_FRAMES_DIR,
+        "--found-frames-dir",
+        help="Directory to write extracted frames (absolute or relative to output dir).",
+    ),
     preview_only: bool = typer.Option(
         False,
         "--preview-only",
@@ -767,7 +779,9 @@ def run(
         detections_path = output_dir / DEFAULT_DETECTIONS
     if boundaries_path == Path(DEFAULT_BOUNDARIES):
         boundaries_path = output_dir / DEFAULT_BOUNDARIES
-    found_frames_dir = output_dir / FOUND_FRAMES_DIR
+    found_frames_dir_path = Path(found_frames_dir)
+    if not found_frames_dir_path.is_absolute():
+        found_frames_dir_path = output_dir / found_frames_dir_path
     detect_meta_path = output_dir / "detect_meta.json"
     cache_ready = detections_path.exists() and boundaries_path.exists() and detect_meta_path.exists()
     if cache_ready:
@@ -783,7 +797,7 @@ def run(
             typer.echo("Cached detections/boundaries do not match selected frames; re-running OCR.")
     if use_cache and cache_ready:
         boundaries_rows = load_boundaries(boundaries_path)
-        frame_files = copy_boundary_frames(boundaries_rows, frames_csv_path, found_frames_dir)
+        frame_files = copy_boundary_frames(boundaries_rows, frames_csv_path, found_frames_dir_path)
         if Console and Table:
             console = Console()
             console.print(f"[bold]Detections:[/bold] {detections_path}")
@@ -804,9 +818,9 @@ def run(
                         str(turn_number),
                         f"{timestamp:.1f}s",
                         str(frame_index),
-                        format_found_frame_rich(prev2_name, found_frames_dir),
-                        format_found_frame_rich(prev1_name, found_frames_dir),
-                        format_found_frame_rich(curr_name, found_frames_dir),
+                        format_found_frame_rich(prev2_name, found_frames_dir_path),
+                        format_found_frame_rich(prev1_name, found_frames_dir_path),
+                        format_found_frame_rich(curr_name, found_frames_dir_path),
                     )
                 console.print(table)
         else:
@@ -820,7 +834,7 @@ def run(
                     )
                     typer.echo(
                         f"  {turn_number} → {timestamp:.1f}s (frame {frame_index}) "
-                        f"[{format_found_frame(prev2_name, found_frames_dir)}, {format_found_frame(prev1_name, found_frames_dir)}, {format_found_frame(curr_name, found_frames_dir)}]"
+                        f"[{format_found_frame(prev2_name, found_frames_dir_path)}, {format_found_frame(prev1_name, found_frames_dir_path)}, {format_found_frame(curr_name, found_frames_dir_path)}]"
                     )
         return
 
@@ -986,7 +1000,7 @@ def run(
     if current_turn is not None and last_seen_ts is not None and last_seen_frame is not None:
         boundaries_rows.append((current_turn, last_seen_ts, last_seen_frame))
 
-    frame_files = copy_boundary_frames(boundaries_rows, frames_csv_path, found_frames_dir)
+    frame_files = copy_boundary_frames(boundaries_rows, frames_csv_path, found_frames_dir_path)
 
     with boundaries_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle)
@@ -1028,9 +1042,9 @@ def run(
                     str(turn_number),
                     f"{timestamp:.1f}s",
                     str(frame_index),
-                    format_found_frame_rich(prev2_name, found_frames_dir),
-                    format_found_frame_rich(prev1_name, found_frames_dir),
-                    format_found_frame_rich(curr_name, found_frames_dir),
+                    format_found_frame_rich(prev2_name, found_frames_dir_path),
+                    format_found_frame_rich(prev1_name, found_frames_dir_path),
+                    format_found_frame_rich(curr_name, found_frames_dir_path),
                 )
             console.print(table)
     else:
@@ -1044,7 +1058,7 @@ def run(
                 )
                 typer.echo(
                     f"  {turn_number} → {timestamp:.1f}s (frame {frame_index}) "
-                    f"[{format_found_frame(prev2_name, found_frames_dir)}, {format_found_frame(prev1_name, found_frames_dir)}, {format_found_frame(curr_name, found_frames_dir)}]"
+                    f"[{format_found_frame(prev2_name, found_frames_dir_path)}, {format_found_frame(prev1_name, found_frames_dir_path)}, {format_found_frame(curr_name, found_frames_dir_path)}]"
                 )
 
 
