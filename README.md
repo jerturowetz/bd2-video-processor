@@ -1,6 +1,6 @@
 # Brown Dust 2 Turn Snapshot Extractor
 
-A helper tool for taking Brown Dust 2 strategy videos and extracting the frames right before the user clicks the **TURN** button.
+A helper to extract frames from Brown Dust 2 strategy videos, right before the user clicks the **TURN** button.
 
 If you’ve ever tried copying a clear from YouTube, you probably know the routine: pause the video, switch back to the game, try to match the setup, switch back again, realize you missed a skill order, repeat until your patience bar is empty. I mostly play on my phone, so that constant app switching destroyed any sense of flow. This tool automates the annoying part so you can focus on actually playing and testing the strategy instead of babysitting the video.
 
