@@ -7,3 +7,10 @@ inputs/
 outputs/
 detections.jsonl
 turn_boundaries.csv
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python

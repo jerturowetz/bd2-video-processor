@@ -26,12 +26,11 @@ def require_tool(tool_name: str) -> None:
 
 
 def run_ffmpeg(command: list[str]) -> None:
-
     try:
         process = subprocess.Popen(
             command,
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+            stderr=subprocess.PIPE,
             text=True,
             bufsize=1,
         )
@@ -40,6 +39,7 @@ def run_ffmpeg(command: list[str]) -> None:
 
     frame = "?"
     out_time = "?"
+    stderr_lines: list[str] = []
     if process.stdout:
         for line in process.stdout:
             line = line.strip()
@@ -53,9 +53,12 @@ def run_ffmpeg(command: list[str]) -> None:
                 if line.endswith("end"):
                     sys.stdout.write("\n")
                     sys.stdout.flush()
+    if process.stderr:
+        stderr_lines = [line.rstrip() for line in process.stderr if line.strip()]
     return_code = process.wait()
     if return_code != 0:
-        raise RuntimeError(f"ffmpeg failed with exit code {return_code}")
+        details = "\n".join(stderr_lines) if stderr_lines else "no stderr output"
+        raise RuntimeError(f"ffmpeg failed with exit code {return_code}\n{details}")
 
 def choose_video_file(search_dir: Path) -> Path:
     try:
@@ -122,7 +125,7 @@ def build_ffmpeg_command(
         "ffmpeg",
         "-hide_banner",
         "-loglevel",
-        "error",
+        "warning",
     ]
     cmd.extend(
         [
@@ -147,8 +150,6 @@ def build_ffmpeg_command(
         [
             "-vf",
             f"fps={fps}",
-            "-vsync",
-            "vfr",
         ]
     )
 

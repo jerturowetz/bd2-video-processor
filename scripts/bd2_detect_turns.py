@@ -76,19 +76,25 @@ def require_dependency(module: str, install_hint: str) -> None:
         raise RuntimeError(f"Missing dependency: {module}. Install with: {install_hint}") from exc
 
 
-def get_access_token() -> str:
-    """Fetch an ADC access token for Vision API."""
+def get_access_token() -> tuple[str, str | None]:
+    """Fetch an ADC access token and optional quota project for Vision API."""
     require_dependency("google.auth", "pip install google-auth")
     import google.auth  # type: ignore
     from google.auth.transport.requests import Request  # type: ignore
 
-    creds, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+    creds, project_id = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
     if not creds:
         raise RuntimeError("No Application Default Credentials found.")
     creds.refresh(Request())
     if not creds.token:
         raise RuntimeError("Failed to obtain access token.")
-    return creds.token
+    quota_project = (
+        getattr(creds, "quota_project_id", None)
+        or project_id
+        or os.getenv("GOOGLE_CLOUD_PROJECT")
+        or os.getenv("GCLOUD_PROJECT")
+    )
+    return creds.token, quota_project
 
 
 def get_gemini_api_key() -> str | None:
@@ -446,16 +452,20 @@ def load_image_bytes(path: Path) -> tuple[bytes, int, int]:
         return buffer.getvalue(), width, height
 
 
-def post_json(payload: dict[str, Any], token: str) -> dict[str, Any]:
-    """POST JSON to Vision API with bearer token."""
+def post_json(payload: dict[str, Any], token: str, quota_project: str | None = None) -> dict[str, Any]:
+    """POST JSON to Vision API with bearer token and optional quota project."""
     data = json.dumps(payload).encode("utf-8")
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+    if quota_project:
+        # Required for user ADC calls against APIs that bill by project.
+        headers["x-goog-user-project"] = quota_project
     request = urllib.request.Request(
         VISION_ENDPOINT,
         data=data,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-        },
+        headers=headers,
         method="POST",
     )
     try:
@@ -468,7 +478,11 @@ def post_json(payload: dict[str, Any], token: str) -> dict[str, Any]:
 
 
 
-def vision_text_detect(image_bytes: bytes, token: str) -> dict[str, Any]:
+def vision_text_detect(
+    image_bytes: bytes,
+    token: str,
+    quota_project: str | None = None,
+) -> dict[str, Any]:
     """Call Vision OCR on provided image bytes."""
     payload = {
         "requests": [
@@ -478,7 +492,7 @@ def vision_text_detect(image_bytes: bytes, token: str) -> dict[str, Any]:
             }
         ]
     }
-    return post_json(payload, token)
+    return post_json(payload, token, quota_project=quota_project)
 
 
 def extract_text(response: dict[str, Any]) -> str:
@@ -557,6 +571,7 @@ def discover_region(
     frames: Iterable[FrameInfo],
     token: str,
     max_frames: int,
+    quota_project: str | None = None,
 ) -> Region:
     """Discover region via Vision OCR on bottom-right grid cell."""
     candidates: list[Region] = []
@@ -566,7 +581,7 @@ def discover_region(
         if processed >= max_frames:
             break
         image_bytes, width, height = crop_image_bytes_with_size(frame.path, grid_region)
-        response = vision_text_detect(image_bytes, token)
+        response = vision_text_detect(image_bytes, token, quota_project=quota_project)
 
         for text, vertices in extract_text_boxes(response):
             if not re.search(r"\bturn\b", text, re.IGNORECASE):
@@ -844,7 +859,12 @@ def run(
                     )
         return
 
-    token = get_access_token()
+    token, quota_project = get_access_token()
+    if not quota_project:
+        raise RuntimeError(
+            "No Google Cloud quota project found. "
+            "Run: gcloud auth application-default set-quota-project bd2-video-analysis-tool"
+        )
 
     detections_path.parent.mkdir(parents=True, exist_ok=True)
     boundaries_path.parent.mkdir(parents=True, exist_ok=True)
@@ -859,11 +879,12 @@ def run(
             model=model,
         )
     else:
-        typer.echo("Discovering region with Vision OCR...")
+        typer.echo(f"Discovering region with Vision OCR (project {quota_project})...")
         suggested = discover_region(
             frames=iter_frames(frames_csv_path),
             token=token,
             max_frames=DEFAULT_DISCOVER_FRAMES,
+            quota_project=quota_project,
         )
     region_box = Region(
         x=suggested.x,
@@ -955,7 +976,7 @@ def run(
             start_time = time.time()
             if crop_bytes is None:
                 crop_bytes = crop_image_bytes(frame.path, region_box)
-            response = vision_text_detect(crop_bytes, token)
+            response = vision_text_detect(crop_bytes, token, quota_project=quota_project)
             elapsed = time.time() - start_time
             text = extract_text(response)
             candidate_turn = parse_turn_number(text)

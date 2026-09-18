@@ -1,4 +1,5 @@
 typer
 google-auth
+requests
 pillow
 rich

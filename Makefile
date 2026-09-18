@@ -49,7 +49,13 @@ download-video: ## Download YouTube video into inputs/ (set YOUTUBE_URL or VIDEO
 		echo "Set YOUTUBE_URL or VIDEO_ID to download a YouTube video."; \
 		exit 1; \
 	fi
-	python3 scripts/bd2_download_youtube.py $(if $(YOUTUBE_URL),--youtube-url "$(YOUTUBE_URL)") $(if $(VIDEO_ID),--video-id "$(VIDEO_ID)")
+	@command -v yt-dlp >/dev/null 2>&1 || { echo "yt-dlp is required. Install it and try again."; exit 1; }
+	@mkdir -p inputs
+	yt-dlp --ignore-config \
+		-f "bv*[vcodec^=avc1]+ba[acodec^=mp4a]/b" \
+		--merge-output-format mp4 \
+		-o "inputs/%(id)s.%(ext)s" \
+		"$(if $(YOUTUBE_URL),$(YOUTUBE_URL),https://www.youtube.com/watch?v=$(VIDEO_ID))"
 
 extract-frames: ## Extract video frames (set VIDEO_PATH to avoid picker).
 	python3 scripts/bd2_extract_frames.py $(if $(VIDEO_PATH),$(VIDEO_PATH),)
