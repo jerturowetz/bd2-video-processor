@@ -6,6 +6,7 @@ import hashlib
 import shutil
 import subprocess
 import sys
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -26,6 +27,9 @@ def require_tool(tool_name: str) -> None:
 
 
 def run_ffmpeg(command: list[str]) -> None:
+    # Drain stdout and stderr concurrently. Reading one pipe to EOF before the
+    # other deadlocks once the unread pipe's OS buffer fills (common on long
+    # videos when ffmpeg emits repeated decoder warnings on stderr).
     try:
         process = subprocess.Popen(
             command,
@@ -40,7 +44,11 @@ def run_ffmpeg(command: list[str]) -> None:
     frame = "?"
     out_time = "?"
     stderr_lines: list[str] = []
-    if process.stdout:
+
+    def read_stdout() -> None:
+        nonlocal frame, out_time
+        if not process.stdout:
+            return
         for line in process.stdout:
             line = line.strip()
             if line.startswith("frame="):
@@ -53,9 +61,22 @@ def run_ffmpeg(command: list[str]) -> None:
                 if line.endswith("end"):
                     sys.stdout.write("\n")
                     sys.stdout.flush()
-    if process.stderr:
-        stderr_lines = [line.rstrip() for line in process.stderr if line.strip()]
+
+    def read_stderr() -> None:
+        if not process.stderr:
+            return
+        for line in process.stderr:
+            stripped = line.rstrip()
+            if stripped:
+                stderr_lines.append(stripped)
+
+    stdout_thread = threading.Thread(target=read_stdout, name="ffmpeg-stdout", daemon=True)
+    stderr_thread = threading.Thread(target=read_stderr, name="ffmpeg-stderr", daemon=True)
+    stdout_thread.start()
+    stderr_thread.start()
     return_code = process.wait()
+    stdout_thread.join()
+    stderr_thread.join()
     if return_code != 0:
         details = "\n".join(stderr_lines) if stderr_lines else "no stderr output"
         raise RuntimeError(f"ffmpeg failed with exit code {return_code}\n{details}")

@@ -9,6 +9,7 @@ import os
 import re
 import shutil
 import statistics
+import subprocess
 import time
 import urllib.error
 import urllib.request
@@ -42,6 +43,8 @@ TURN_MAX_BACK = 4
 TURN_STEP = 2
 DETECTION_LOGIC_VERSION = "turn-confirm-v1"
 FOUND_FRAME_EPOCH = 946684800.0
+DEFAULT_QUOTA_PROJECT = "bd2-video-analysis-tool"
+CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platform"
 
 try:
     from rich.console import Console
@@ -76,25 +79,160 @@ def require_dependency(module: str, install_hint: str) -> None:
         raise RuntimeError(f"Missing dependency: {module}. Install with: {install_hint}") from exc
 
 
-def get_access_token() -> tuple[str, str | None]:
-    """Fetch an ADC access token and optional quota project for Vision API."""
+def resolve_quota_project(creds: Any | None = None, project_id: str | None = None) -> str | None:
+    """Pick a quota project from credentials, env, gcloud config, or default."""
+    candidates = [
+        getattr(creds, "quota_project_id", None) if creds is not None else None,
+        project_id,
+        os.getenv("GOOGLE_CLOUD_PROJECT"),
+        os.getenv("GCLOUD_PROJECT"),
+        os.getenv("GOOGLE_CLOUD_QUOTA_PROJECT"),
+    ]
+    for value in candidates:
+        if value:
+            return str(value)
+
+    if shutil.which("gcloud"):
+        try:
+            completed = subprocess.run(
+                ["gcloud", "config", "get-value", "project"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            project = completed.stdout.strip()
+            if completed.returncode == 0 and project and project != "(unset)":
+                return project
+        except OSError:
+            pass
+
+    return DEFAULT_QUOTA_PROJECT
+
+
+def ensure_adc_quota_project(quota_project: str) -> None:
+    """Persist quota project on ADC so Vision billing/quota headers stay set."""
+    if not shutil.which("gcloud"):
+        return
+    completed = subprocess.run(
+        ["gcloud", "auth", "application-default", "set-quota-project", quota_project],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if completed.returncode != 0:
+        details = (completed.stderr or completed.stdout or "").strip()
+        raise RuntimeError(
+            "Failed to set ADC quota project "
+            f"'{quota_project}'.{(' ' + details) if details else ''}"
+        )
+
+
+def reauth_application_default(quota_project: str | None = None) -> str:
+    """Run interactive ADC login and restore quota project afterward."""
+    if not shutil.which("gcloud"):
+        raise RuntimeError(
+            "gcloud is required to re-authenticate Application Default Credentials. "
+            "Install Google Cloud SDK, then rerun."
+        )
+
+    target_project = quota_project or resolve_quota_project(None)
+    typer.echo(
+        "Google Application Default Credentials expired or are missing. "
+        "Opening browser login..."
+    )
+    login = subprocess.run(
+        [
+            "gcloud",
+            "auth",
+            "application-default",
+            "login",
+            f"--scopes={CLOUD_PLATFORM_SCOPE}",
+        ],
+        check=False,
+    )
+    if login.returncode != 0:
+        raise RuntimeError(
+            "gcloud auth application-default login failed. "
+            "Complete browser login and try again."
+        )
+
+    if not target_project:
+        raise RuntimeError(
+            "ADC login succeeded but no quota project could be determined. "
+            f"Run: gcloud auth application-default set-quota-project {DEFAULT_QUOTA_PROJECT}"
+        )
+
+    ensure_adc_quota_project(target_project)
+    typer.echo(f"ADC refreshed with quota project '{target_project}'.")
+    return target_project
+
+
+def _load_adc_token(force_reauth: bool = False) -> tuple[str, str | None]:
+    """Load/refresh ADC once, optionally forcing interactive re-auth first."""
     require_dependency("google.auth", "pip install google-auth")
     import google.auth  # type: ignore
+    from google.auth.exceptions import DefaultCredentialsError, RefreshError  # type: ignore
     from google.auth.transport.requests import Request  # type: ignore
 
-    creds, project_id = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+    preferred_quota: str | None = None
+    if force_reauth:
+        preferred_quota = reauth_application_default()
+
+    try:
+        creds, project_id = google.auth.default(scopes=[CLOUD_PLATFORM_SCOPE])
+    except DefaultCredentialsError:
+        if force_reauth:
+            raise RuntimeError(
+                "No Application Default Credentials found after login."
+            ) from None
+        preferred_quota = reauth_application_default()
+        creds, project_id = google.auth.default(scopes=[CLOUD_PLATFORM_SCOPE])
+
     if not creds:
         raise RuntimeError("No Application Default Credentials found.")
-    creds.refresh(Request())
+
+    try:
+        creds.refresh(Request())
+    except RefreshError as exc:
+        message = str(exc).lower()
+        reauthable = any(
+            needle in message
+            for needle in ("invalid_grant", "expired", "revoked", "invalid_rapt")
+        )
+        if force_reauth or not reauthable:
+            raise RuntimeError(f"Failed to refresh Google credentials: {exc}") from exc
+        preferred_quota = reauth_application_default(
+            quota_project=resolve_quota_project(creds, project_id)
+        )
+        creds, project_id = google.auth.default(scopes=[CLOUD_PLATFORM_SCOPE])
+        try:
+            creds.refresh(Request())
+        except RefreshError as retry_exc:
+            raise RuntimeError(
+                f"Failed to refresh Google credentials after re-auth: {retry_exc}"
+            ) from retry_exc
+
     if not creds.token:
         raise RuntimeError("Failed to obtain access token.")
-    quota_project = (
-        getattr(creds, "quota_project_id", None)
-        or project_id
-        or os.getenv("GOOGLE_CLOUD_PROJECT")
-        or os.getenv("GCLOUD_PROJECT")
-    )
+
+    quota_project = preferred_quota or resolve_quota_project(creds, project_id)
+    if quota_project and not getattr(creds, "quota_project_id", None):
+        # Login rewrites ADC and drops quota_project_id; keep local billing project set.
+        try:
+            ensure_adc_quota_project(quota_project)
+        except RuntimeError as exc:
+            typer.echo(f"Warning: {exc}")
+
     return creds.token, quota_project
+
+
+def get_access_token() -> tuple[str, str | None]:
+    """Fetch an ADC access token and quota project for Vision API.
+
+    If ADC is missing or the refresh token was expired/revoked, run interactive
+    `gcloud auth application-default login` once and retry.
+    """
+    return _load_adc_token(force_reauth=False)
 
 
 def get_gemini_api_key() -> str | None:
@@ -863,7 +1001,7 @@ def run(
     if not quota_project:
         raise RuntimeError(
             "No Google Cloud quota project found. "
-            "Run: gcloud auth application-default set-quota-project bd2-video-analysis-tool"
+            f"Run: gcloud auth application-default set-quota-project {DEFAULT_QUOTA_PROJECT}"
         )
 
     detections_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1092,5 +1230,8 @@ def run(
 if __name__ == "__main__":
     try:
         typer.run(run)
+    except typer.Exit:
+        raise
     except Exception as exc:
+        typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(code=1) from exc
